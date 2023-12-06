@@ -39,7 +39,6 @@ OR simply:
 `cmake --build .`
 
 
-
 To launch -
 
 start pi - xterm ssh -Y pi@192.168.x.y 
