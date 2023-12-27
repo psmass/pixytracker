@@ -178,8 +178,6 @@ namespace MODULE
                             dds::core::xtypes::DynamicData& data = const_cast<dds::core::xtypes::DynamicData&>(sample.data());
                             this->handler(data); // call the topic specific Handler (Virtual) 
 
-                            std::cout << std::endl;
-
                         }
                         else {
                             std::cout << "Received metadata" << std::endl;
@@ -189,7 +187,7 @@ namespace MODULE
             }
         }
         
-        std::cout << this->topicType << "Reader thread shutting down" << std::endl;   
+        std::cout << this->topicType << " Reader thread shutting down" << std::endl;   
     }
 
    void Reader::runThread(){

@@ -65,7 +65,6 @@ public:
 private:
   DDS_DynamicData * servo_data;
   GIMBAL::Gimbal gimbal;
-  DDS_UnsignedShort frequency {SERVO_FREQUENCY_HZ};
   int frame_count {0};
 };
 

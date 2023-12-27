@@ -27,20 +27,21 @@ namespace MODULE
         // Update Static Topic Data parameters in the beginning of the handler
         // prior to the loop, but after the entity base class creates the sample.
         // std::cout << "Servo Writer C'Tor" << std::endl;
+    this->getMyDataSample()->value<uint16_t>("frequency", SERVO_FREQUENCY_HZ);
   };
 
   void ServoWtr::writeData(int32_t x, int32_t y) {
     gimbal.update_pan(x);
     gimbal.update_tilt(y);
-    std::cout << "P: " << gimbal.get_pan_position() << \
-      "   T: " << gimbal.get_tilt_position() << "\r" << std::flush;
-    //this->getMyDataSample()->value<int32_t>("pan", gimbal.get_pan_position());
-    //servo_writer->getMyDataSample()->value<int32_t>("tilt", gimbal.get_tilt_position());
-    //    servo_writer->write(*this->getMyDataSample());
+    this->getMyDataSample()->value<uint16_t>("pan", gimbal.get_pan_position());
+    this->getMyDataSample()->value<uint16_t>("tilt", gimbal.get_tilt_position());
+    this->topicWriter.write(*this->getMyDataSample());
     if (this->frame_count++ > 10) {
       this->frame_count = 0;
-      printf("P: %d T: %d   \r", gimbal.get_pan_position(), gimbal.get_tilt_position());
-      fflush(stdout);
+      std::cout << "P: " << gimbal.get_pan_position() \
+		<<" T: " << gimbal.get_tilt_position() << "          ""\r" << std::flush;
+      //printf("P: %d T: %d   \r", gimbal.get_pan_position(), gimbal.get_tilt_position());
+      //fflush(stdout);
     }
   };
 
