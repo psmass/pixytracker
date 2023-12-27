@@ -17,7 +17,6 @@
 #include <dds/dds.hpp>
 #include "tracker.hpp"
 #include "ddsEntities.hpp"
-#include "application.hpp"
 #include "gimbal.hpp"
 
 
@@ -58,15 +57,16 @@ public:
   ~ServoWtr(void){};
 
   // write() is effectively a runtime down cast for periodic data
-  void write() {
-    ;
-  };
+  // void write();
   
   // Servo Specific non-periodic write call
-  void writeData();
+  void writeData(int32_t x, int32_t y);
         
 private:
   DDS_DynamicData * servo_data;
+  GIMBAL::Gimbal gimbal;
+  DDS_UnsignedShort frequency {SERVO_FREQUENCY_HZ};
+  int frame_count {0};
 };
 
 class ShapesRdr : public Reader {
@@ -78,17 +78,14 @@ public:
   void handler(dds::core::xtypes::DynamicData& data);
         
 private:
-  GIMBAL::Gimbal gimbal;
   DDS_Long x;
   DDS_Long y;
-  DDS_UnsignedShort frequency {SERVO_FREQUENCY_HZ};
-  int frame_count {0};
+
   ServoWtr* servo_writer;
 
 };
 
 
 } // namespace MODULE
-
 
 #endif // TOPICS_HPP

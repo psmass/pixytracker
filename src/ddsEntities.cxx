@@ -171,8 +171,8 @@ namespace MODULE
                     for (const auto sample : samples) {
 
                         if (sample.info().valid()) {
-                            std::cout << "Read sample for topic: " << this->topicType << std::endl;
-                            std::cout << sample.data() << std::endl;
+			  //std::cout << "Read sample for topic: " << this->topicType << std::endl;
+			  //std::cout << sample.data() << std::endl;
 
                             // map the sample to the specific dynamic data type
                             dds::core::xtypes::DynamicData& data = const_cast<dds::core::xtypes::DynamicData&>(sample.data());

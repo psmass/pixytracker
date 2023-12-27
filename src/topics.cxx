@@ -29,10 +29,20 @@ namespace MODULE
         // std::cout << "Servo Writer C'Tor" << std::endl;
   };
 
-  void ServoWtr::writeData() {
-    std::cout << "Writing Servo Control Sample " << std::endl;
-
-  }; 
+  void ServoWtr::writeData(int32_t x, int32_t y) {
+    gimbal.update_pan(x);
+    gimbal.update_tilt(y);
+    std::cout << "P: " << gimbal.get_pan_position() << \
+      "   T: " << gimbal.get_tilt_position() << "\r" << std::flush;
+    //this->getMyDataSample()->value<int32_t>("pan", gimbal.get_pan_position());
+    //servo_writer->getMyDataSample()->value<int32_t>("tilt", gimbal.get_tilt_position());
+    //    servo_writer->write(*this->getMyDataSample());
+    if (this->frame_count++ > 10) {
+      this->frame_count = 0;
+      printf("P: %d T: %d   \r", gimbal.get_pan_position(), gimbal.get_tilt_position());
+      fflush(stdout);
+    }
+  };
 
   
   ShapesRdr::ShapesRdr(const dds::domain::DomainParticipant participant,  ServoWtr* servoWriter)
@@ -44,20 +54,12 @@ namespace MODULE
 
   void ShapesRdr::handler(dds::core::xtypes::DynamicData& data) {
     DDS_ReturnCode_t retcode;
-    std::cout << "Shapes Reader Handler Executing" << std::endl;
+    //std::cout << "Shapes Reader Handler Executing" << std::endl;
     // Control the pan & til
     x = data.value<int32_t>("x");
-    y = data.value<int32_t>("y");    
-    gimbal.update_pan(x);
-    gimbal.update_tilt(y);
-    servo_writer->getMyDataSample()->value<int32_t>("pan", gimbal.get_pan_position());
-    servo_writer->getMyDataSample()->value<int32_t>("tilt", gimbal.get_tilt_position());
-    //    servo_writer->write(*this->getMyDataSample());
-    if (this->frame_count++ > 10) {
-      this->frame_count = 0;
-      printf("P: %d T: %d   \r", gimbal.get_pan_position(), gimbal.get_tilt_position());
-      fflush(stdout);
-    }
+    y = data.value<int32_t>("y");
+    //std::cout << "X: " << x <<  "   Y: " << y << "\r" << std::endl;
+    this->servo_writer->writeData(x,y);
 
   };
 
