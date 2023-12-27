@@ -67,12 +67,6 @@
           </multicast>
         </datareader_qos>
         <datawriter_qos>
-	  <ownership>
-            <kind>EXCLUSIVE_OWNERSHIP_QOS</kind>
-          </ownership>
-          <ownership_strength>
-            <value>1</value>
-          </ownership_strength>
         </datawriter_qos>
       </qos_profile>
     </qos_library>

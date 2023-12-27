@@ -12,7 +12,7 @@ set(CMAKE_MODULE_PATH
     "$ENV{NDDSHOME}/resource/cmake"
 )
 
-#set(COMPILE_FLAGS_STD_C11 "-std=c++11")
+set(COMPILE_FLAGS_STD_C11 "-std=c++11")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILE_FLAGS_STD_C11}")
 
 set(LINKER_FLAGS "-v")
@@ -26,6 +26,9 @@ find_package(
 )
 
 set(TRACKER_CPP_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/gimbal.cxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/topics.cxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ddsEntities.cxx"
     "${CMAKE_CURRENT_SOURCE_DIR}/tracker.cxx"
 )
 
@@ -35,8 +38,7 @@ add_executable(Tracker
 )
 
 target_link_libraries(Tracker
-	RTIConnextDDS::cpp_api
+	RTIConnextDDS::cpp2_api
 )
-
 
 

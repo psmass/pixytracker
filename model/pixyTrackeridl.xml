@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/6.0.1/rti_dds_profiles.xsd" version="6.0.1">
+    <types>
+      <struct name="ServoControl" extensibility="appendable">
+        <member name="pan" type="uint16"/>
+        <member name="tilt" type="uint16"/>
+        <member name="frequency" type="uint16"/>
+      </struct>
+      <const name="DEFAULT_CAM_CONTROL_TOPIC_NAME" type="string" value="pixy/servo_control"/>
+      <enum name="ShapeFillKind">
+        <enumerator name="SOLID_FILL" value="0"/>
+        <enumerator name="TRANSPARENT_FILL" value="1"/>
+        <enumerator name="HORIZONTAL_HATCH_FILL" value="2"/>
+        <enumerator name="VERTICAL_HATCH_FILL" value="3"/>
+      </enum>
+      <struct name="ShapeType" extensibility="appendable">
+        <member name="color" type="string" stringMaxLength="128" key="true"/>
+        <member name="x" type="int32"/>
+        <member name="y" type="int32"/>
+        <member name="shapesize" type="int32"/>
+      </struct>
+      <struct name="ShapeTypeExtended" baseType="ShapeType">
+        <member name="fillKind" type="nonBasic" nonBasicTypeName="ShapeFillKind"/>
+        <member name="angle" type="float32"/>
+      </struct>
+      <const name="DEFAULT_CAM_CONFIG_TOPIC_NAME" type="string" value="pixy/camconfig"/>
+      <struct name="PixyCamConfig">
+        <!-- Which profiles are enabled -->
+        <member name="profileEnabled" type="boolean" arrayDimensions="7"/>
+      </struct>
+    </types>
+
+
+</dds>

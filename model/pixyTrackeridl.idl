@@ -1,0 +1,44 @@
+
+@appendable
+struct ServoControl {
+  uint16 pan;
+  uint16 tilt;
+  uint16 frequency;
+};
+
+const string DEFAULT_CAM_CONTROL_TOPIC_NAME = "pixy/servo_control";
+@appendable
+enum ShapeFillKind {
+  @value(0)
+  SOLID_FILL,
+  @value(1)
+  TRANSPARENT_FILL,
+  @value(2)
+  HORIZONTAL_HATCH_FILL,
+  @value(3)
+  VERTICAL_HATCH_FILL
+};
+
+@appendable
+struct ShapeType {
+  @key
+  string<128> color;
+  int32 x;
+  int32 y;
+  int32 shapesize;
+};
+
+
+@appendable
+struct ShapeTypeExtended: ShapeType {
+  ShapeFillKind fillKind;
+  float angle;
+};
+
+const string DEFAULT_CAM_CONFIG_TOPIC_NAME = "pixy/camconfig";
+
+@appendable
+struct PixyCamConfig {
+  boolean profileEnabled[7];
+};
+

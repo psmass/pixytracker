@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/6.0.1/rti_dds_profiles.xsd" version="6.0.1">
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/7.2.0/rti_dds_profiles.xsd" version="7.2.0">
     <types>
       <struct name="ServoControl" extensibility="appendable">
         <member name="pan" type="uint16"/>
@@ -30,8 +30,8 @@
       </struct>
     </types>
 
-    <qos_library name="PixyTracker_Library">
-      <qos_profile name="PixyTracker_Profile" is_default_qos="true">
+    <qos_library name="PixyTrackerQOS_Library">
+      <qos_profile name="PixyTracker_Profile">
         <participant_qos>
           <transport_builtin>
             <mask>UDPv4</mask>
@@ -74,7 +74,23 @@
             <name>TrackerHostWriter</name>
             <role_name>TrackerWriter</role_name>
           </publication_name>
+	    <ownership>
+              <kind>EXCLUSIVE_OWNERSHIP_QOS</kind>
+            </ownership>
+            <ownership_strength>
+              <value>1</value>
+            </ownership_strength>
         </datawriter_qos>
+      </qos_profile>
+      <qos_profile name="Exclusive">
+        <datawriter_qos>
+	  <ownership>
+            <kind>EXCLUSIVE_OWNERSHIP_QOS</kind>
+          </ownership>
+          <ownership_strength>
+            <value>1</value>
+          </ownership_strength>
+	</datawriter_qos>
       </qos_profile>
     </qos_library>
 
@@ -90,7 +106,9 @@
     <domain_participant_library name="PixyTrackerParticipant_Library">
       <domain_participant name="PixyTrackerParticipant" domain_ref="PixyShapesDomain_Library::PixyShapesDomain">
         <publisher name="publisher">
-          <data_writer name="servo_topic_writer" topic_ref="pixy/servo_control"/>
+          <data_writer name="servo_topic_writer" topic_ref="pixy/servo_control">
+	    <datawriter_qos base_name="PixyTrackerQOS_Library::Exclusive"/>
+	  </data_writer>
         </publisher>
         <subscriber name="subscriber">
           <data_reader name="shape_topic_reader" topic_ref="Circle">
