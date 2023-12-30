@@ -24,11 +24,60 @@
 
 namespace MODULE
 {
+
+  // need to covert Instance Handles to Guids to use the math operators to compare values
+  rti::core::Guid convertToGuid ( const dds::core::InstanceHandle& instanceHandle ) {
+    rti::core::Guid guid;
+    memcpy(&guid,reinterpret_cast<DDS_Octet const *>(&instanceHandle ),16);
+    return guid;
+  }
+
+  // test routine to create a Guid to try comparison operators
+  rti::core::Guid convertIntToGuid ( const int32_t& i ) {
+    rti::core::Guid guid;
+    memcpy(&guid,reinterpret_cast<DDS_Octet const *>(&i ),16);
+    return guid;
+  }
+  
+  
 void run_tracker_application(unsigned int tracked_channel) {
    // Create the participant
     dds::core::QosProvider qos_provider({ MODULE::QOS_FILE });
     dds::domain::DomainParticipant participant =
       qos_provider->create_participant_from_config("PixyTrackerParticipant_Library::PixyTrackerParticipant");
+
+    /* interesting ways to get the participant handle 
+    dds::domain::qos::DomainParticipantQos p_qos;
+    p_qos=participant->qos();
+
+    std::cout <<"Participant QoS " << p_qos << std::endl;
+
+    rti::core::policy::WireProtocol wc;
+    int32_t p_id=p_qos->wire_protocol.participant_id();
+    int32_t h_id=p_qos->wire_protocol.rtps_host_id();
+    int32_t a_id=p_qos->wire_protocol.rtps_app_id();
+    int32_t i_id=p_qos->wire_protocol.rtps_instance_id();
+    
+    std::cout << "P:H:A:I ID:" << p_id << " " << h_id << " " << a_id << " " << i_id << std::endl;
+    */
+
+    /* Get my participant Instance Handle */
+    const dds::core::InstanceHandle handle=participant->instance_handle();
+    std::cout << "INSTANCE HANDLE: " << handle << std::endl;
+
+    rti::core::Guid myGuid = convertToGuid(handle);
+
+    std::cout << "GUID Convert: " << myGuid << std::endl;
+
+    const int32_t i = 20082004;
+    rti::core::Guid myMadeupGuid = convertIntToGuid(i);
+
+    if (myMadeupGuid > myGuid)
+      std::cout << "Madeup Guid is larger" << std::endl;
+    else
+      std::cout << "myGuid is larger" << std::endl;
+
+    std::cout << "GUID Int Convert: " << myMadeupGuid << std::endl;
 
     // Instantiate Topic Readers and Writers w/threads
     ServoWtr servo_writer(participant); 

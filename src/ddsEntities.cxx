@@ -173,7 +173,7 @@ namespace MODULE
                         if (sample.info().valid()) {
 			  //std::cout << "Read sample for topic: " << this->topicType << std::endl;
 			  //std::cout << sample.data() << std::endl;
-
+			  //std::cout << sample.info()->source_guid() << std::endl;
                             // map the sample to the specific dynamic data type
                             dds::core::xtypes::DynamicData& data = const_cast<dds::core::xtypes::DynamicData&>(sample.data());
                             this->handler(data); // call the topic specific Handler (Virtual) 
