@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/7.2.0/rti_dds_profiles.xsd" version="7.2.0">
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/7.2.0/rti_routing_service.xsd" version="7.2.0">
     <types>
       <struct name="ServoControl" extensibility="appendable">
         <member name="pan" type="uint16"/>
@@ -28,34 +28,36 @@
         <!-- Which profiles are enabled -->
         <member name="profileEnabled" type="boolean" arrayDimensions="7"/>
       </struct>
+      <struct name="ControllerHeartbeat" extensibility="appendable">
+        <member name="MyParticipantHandle" type="uint8" sequenceMaxLength="16" key="true"/>
+      </struct>
     </types>
 
     <qos_library name="PixyTrackerQOS_Library">
       <qos_profile name="PixyTracker_Profile">
-        <participant_qos>
+        <domain_participant_qos>
           <transport_builtin>
             <mask>UDPv4</mask>
           </transport_builtin>
           <discovery>
-            <multicast_receive_addresses>
-              <element>239.255.0.1</element>
-            </multicast_receive_addresses>
-            
             <initial_peers>
               <element>192.168.1.202</element>
               <element>4@builtin.udpv4://127.0.0.1</element>
               <element>builtin.shmem://</element>
             </initial_peers>
-        
+            <multicast_receive_addresses>
+              <element>239.255.0.1</element>
+            </multicast_receive_addresses>
           </discovery>
-          <participant_name>
-            <name>TrackerParticipant1</name> <!-- We can change this name w/o Code changes to see different participants in Admin Console -->
-            <role_name>TrackerRole</role_name>
-          </participant_name>
           <discovery_config>
             <endpoint_type_object_lb_serialization_threshold>-1</endpoint_type_object_lb_serialization_threshold>
           </discovery_config>
-        </participant_qos>
+          <participant_name>
+            <name>TrackerParticipant1</name>
+            <!-- We can change this name w/o Code changes to see different participants in Admin Console -->
+            <role_name>TrackerRole</role_name>
+          </participant_name>
+        </domain_participant_qos>
         <datareader_qos>
           <multicast>
             <value>
@@ -70,27 +72,27 @@
           </subscription_name>
         </datareader_qos>
         <datawriter_qos>
-          <publication_name>
-            <name>TrackerHostWriter</name>
-            <role_name>TrackerWriter</role_name>
-          </publication_name>
-	    <ownership>
-              <kind>EXCLUSIVE_OWNERSHIP_QOS</kind>
-            </ownership>
-            <ownership_strength>
-              <value>1</value>
-            </ownership_strength>
-        </datawriter_qos>
-      </qos_profile>
-      <qos_profile name="Exclusive">
-        <datawriter_qos>
-	  <ownership>
+          <ownership>
             <kind>EXCLUSIVE_OWNERSHIP_QOS</kind>
           </ownership>
           <ownership_strength>
             <value>1</value>
           </ownership_strength>
-	</datawriter_qos>
+          <publication_name>
+            <name>TrackerHostWriter</name>
+            <role_name>TrackerWriter</role_name>
+          </publication_name>
+        </datawriter_qos>
+      </qos_profile>
+      <qos_profile name="Exclusive">
+        <datawriter_qos>
+          <ownership>
+            <kind>EXCLUSIVE_OWNERSHIP_QOS</kind>
+          </ownership>
+          <ownership_strength>
+            <value>1</value>
+          </ownership_strength>
+        </datawriter_qos>
       </qos_profile>
     </qos_library>
 
@@ -98,8 +100,10 @@
       <domain name="PixyShapesDomain" domain_id="53">
         <register_type name="ServoControl" type_ref="ServoControl"/>
         <register_type name="ShapeTypeExtended" type_ref="ShapeTypeExtended"/>
+        <register_type name="ControllerHeartbeat" type_ref="ControllerHeartbeat"/>
         <topic name="Circle" register_type_ref="ShapeTypeExtended"/>
         <topic name="pixy/servo_control" register_type_ref="ServoControl"/>
+        <topic name="controller_heartbeat" register_type_ref="ControllerHeartbeat"/>
       </domain>
     </domain_library>
 
@@ -107,18 +111,21 @@
       <domain_participant name="PixyTrackerParticipant" domain_ref="PixyShapesDomain_Library::PixyShapesDomain">
         <publisher name="publisher">
           <data_writer name="servo_topic_writer" topic_ref="pixy/servo_control">
-	    <datawriter_qos base_name="PixyTrackerQOS_Library::Exclusive"/>
-	  </data_writer>
+            <datawriter_qos base_name="PixyTrackerQOS_Library::Exclusive">
+            </datawriter_qos>
+          </data_writer>
+          <data_writer name="controller_hb_topic_writer" topic_ref="controller_heartbeat"/>
         </publisher>
         <subscriber name="subscriber">
           <data_reader name="shape_topic_reader" topic_ref="Circle">
-            <filter name="cft" kind="builtin.stringMatch">
+            <content_filter name="cft" kind="builtin.stringMatch">
               <expression>color MATCH %0</expression>
-              <parameter_list>
-                <param>YELLOW</param>
-              </parameter_list>
-            </filter>
+              <expression_parameters>
+                <element>YELLOW</element>
+              </expression_parameters>
+            </content_filter>
           </data_reader>
+          <data_reader name="controller_hb_topic_reader" topic_ref="controller_heartbeat"/>
         </subscriber>
       </domain_participant>
     </domain_participant_library>

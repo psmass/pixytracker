@@ -1,1 +1,33 @@
-{"ui_projectName":"pixyTracker","ui_settings":{"confirmDelete":true,"showEZSecure":false,"autosave":1,"enforceSnippetSeparation":true,"useAsSnippetIfName":false},"ui_lastSaveTime":"22/2/2022 @ 14:40:9","ui_projectNotes":"","ui_include":[{"path":"BaselineRoot.documentationONLY.xml","readonly":true,"builtin":true},{"path":"BuiltinProfiles.documentationONLY.xml","readonly":true,"builtin":true},{"path":"pixyTracker.xml","readonly":false,"builtin":false}],"ui_scenariopath":null,"ui_projectGUID":"5277efc2-295c-590c-ca35-84f45ab4d06f"}
+{
+  "ui_projectName": "pixyTracker",
+  "ui_settings": {
+    "confirmDelete": true,
+    "showEZSecure": false,
+    "autosave": 1,
+    "enforceSnippetSeparation": true,
+    "useAsSnippetIfName": false
+  },
+  "ui_lastSaveTime": "31/12/2023 @ 14:32:50",
+  "ui_creationDate": "30/12/2023 @ 7:51:32",
+  "ui_creationSysDVersion": "7.2.0",
+  "ui_projectNotes": "",
+  "ui_include": [
+    {
+      "path": "BaselineRoot.documentationONLY.xml",
+      "readonly": true,
+      "builtin": true
+    },
+    {
+      "path": "BuiltinProfiles.documentationONLY.xml",
+      "readonly": true,
+      "builtin": true
+    },
+    {
+      "path": "pixyTracker.xml",
+      "readonly": false,
+      "builtin": false
+    }
+  ],
+  "ui_scenariopath": null,
+  "ui_projectGUID": "5277efc2-295c-590c-ca35-84f45ab4d06f"
+}

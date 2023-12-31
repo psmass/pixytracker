@@ -48,42 +48,69 @@ namespace MODULE
 
 */
 
-class ServoWtr : public Writer {
-public:
-  ServoWtr(
-	   const dds::domain::DomainParticipant participant,
-           bool periodic = false,
-           dds::core::Duration period =std::chrono::seconds(4));
-  ~ServoWtr(void){};
+  class ServoWtr : public Writer {
+  public:
+    ServoWtr(
+	     const dds::domain::DomainParticipant participant,
+	     bool periodic = false,
+	     dds::core::Duration period =std::chrono::seconds(4));
+    ~ServoWtr(void){};
 
-  // write() is effectively a runtime down cast for periodic data
-  // void write();
+    // write() is effectively a runtime down cast for periodic data
+    // void write();
   
-  // Servo Specific non-periodic write call
-  void writeData(int32_t x, int32_t y);
+    // Servo Specific non-periodic write call
+    void writeData(int32_t x, int32_t y);
         
-private:
-  DDS_DynamicData * servo_data;
-  GIMBAL::Gimbal gimbal;
-  int frame_count {0};
-};
+  private:
+    DDS_DynamicData * servo_data;
+    GIMBAL::Gimbal gimbal;
+    int frame_count {0};
+  };
 
-class ShapesRdr : public Reader {
-public:
-  ShapesRdr(const dds::domain::DomainParticipant participant,
-	    ServoWtr* servoWriter);
-  ~ShapesRdr(void){};
+  class ShapesRdr : public Reader {
+  public:
+    ShapesRdr(const dds::domain::DomainParticipant participant,
+	      ServoWtr* servoWriter);
+    ~ShapesRdr(void){};
 
-  void handler(dds::core::xtypes::DynamicData& data);
+    void handler(dds::core::xtypes::DynamicData& data);
         
-private:
-  DDS_Long x;
-  DDS_Long y;
+  private:
+    DDS_Long x;
+    DDS_Long y;
 
-  ServoWtr* servo_writer;
+    ServoWtr* servo_writer;
 
-};
+  };
 
+  class HeartbeatWtr : public Writer {
+  public:
+    HeartbeatWtr(
+	     const dds::domain::DomainParticipant participant,
+	     bool periodic = false,
+	     dds::core::Duration period =std::chrono::seconds(4));
+    
+    ~HeartbeatWtr(void){};
+
+    // write() is effectively a runtime down cast for periodic data
+    void write();
+  
+    
+  };
+
+
+  class HeartbeatRdr : public Reader {
+  public:
+    HeartbeatRdr(const dds::domain::DomainParticipant participant);
+    
+    ~HeartbeatRdr(void){};
+
+    void handler(dds::core::xtypes::DynamicData& data);
+        
+
+  };
+    
 
 } // namespace MODULE
 

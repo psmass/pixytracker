@@ -16,12 +16,31 @@
 
 namespace MODULE
 {
+
+  
+  // need to covert Instance Handles to Guids to use the math operators to compare values
+  rti::core::Guid convertToGuid ( const dds::core::InstanceHandle& instanceHandle ) {
+    rti::core::Guid guid;
+    memcpy(&guid,reinterpret_cast<DDS_Octet const *>(&instanceHandle ),16);
+    return guid;
+  }
+
+  // test routine to create a Guid to try comparison operators
+  rti::core::Guid convertIntToGuid ( const int32_t& i ) {
+    rti::core::Guid guid;
+    memcpy(&guid,reinterpret_cast<DDS_Octet const *>(&i ),16);
+    return guid;
+  }
+
+  // test routine to create a Guid to try comparison operators
+  void convertInstanceHandleToArray (unsigned char *guidArray, const dds::core::InstanceHandle& instanceHandle ) {
+    memcpy(guidArray,reinterpret_cast<DDS_Octet const *>(&instanceHandle ),16);
+  }
+
   
   ServoWtr::ServoWtr(
 	const dds::domain::DomainParticipant participant,
-        bool periodic,
-
-	
+        bool periodic,	
         dds::core::Duration period)
     : Writer(participant, "ServoControl", "publisher::servo_topic_writer", periodic, period) {
         // Update Static Topic Data parameters in the beginning of the handler
@@ -63,6 +82,113 @@ namespace MODULE
     this->servo_writer->writeData(x,y);
 
   };
+
+  HeartbeatWtr::HeartbeatWtr(
+	     const dds::domain::DomainParticipant participant,
+	     bool periodic,
+	     dds::core::Duration period)
+    : Writer(participant, "ControllerHeartbeat", "publisher::controller_hb_topic_writer", periodic, period) {
+
+    using namespace dds::core::xtypes;
+    using namespace rti::core::xtypes;
+    
+    /* interesting ways to get the participant handle 
+    dds::domain::qos::DomainParticipantQos p_qos;
+    p_qos=participant->qos();
+
+    std::cout <<"Participant QoS " << p_qos << std::endl;
+
+    rti::core::policy::WireProtocol wc;
+    int32_t p_id=p_qos->wire_protocol.participant_id();
+    int32_t h_id=p_qos->wire_protocol.rtps_host_id();
+    int32_t a_id=p_qos->wire_protocol.rtps_app_id();
+    int32_t i_id=p_qos->wire_protocol.rtps_instance_id();
+    
+    std::cout << "P:H:A:I ID:" << p_id << " " << h_id << " " << a_id << " " << i_id << std::endl;
+    */
+
+    /* Get my participant Instance Handle and send it rather than Guids.
+       We'll need to convert instance handles to GUIDS to use the math operators. 
+       Note sure how to get Guid directly and can't do math on Instance handle.
+     */
+    const dds::core::InstanceHandle handle=participant->instance_handle();
+    std::cout << "INSTANCE HANDLE: " << handle << std::endl;
+
+    rti::core::Guid myGuid = convertToGuid(handle);
+    std::cout << "GUID Convert: " << myGuid << std::endl;
+
+    /* // Test Guid Math operators - seems to work fine
+
+    const int32_t i = 20082004;
+    rti::core::Guid myMadeupGuid = convertIntToGuid(i);
+
+    if (myMadeupGuid > myGuid)
+      std::cout << "Madeup Guid is larger" << std::endl;
+    else
+      std::cout << "myGuid is larger" << std::endl;
+
+    std::cout << "GUID Int Convert: " << myMadeupGuid << std::endl;
+    */
+  
+    unsigned char arr[16];
+    convertInstanceHandleToArray(arr, handle);
+  
+    // Attempt to load the sample using this ref (did not seem to work):
+    // https://community.rti.com/examples/dynamic-data-accessing-sequence-members
+    DynamicData my_participant_handle = \
+      this->getMyDataSample()->value<DynamicData>("MyParticipantHandle");
+
+    DynamicType my_participant_handle_type = \
+      static_cast<const SequenceType &>(my_participant_handle.type()).content_type();
+    
+
+    std::cout << "Participant Char Array:";
+    for (int i=0; i<16; i++) {
+      printf("0x%x ", arr[i]);
+      //LoanedDynamicData loaned_data = my_participant_handle.loan_value(i+1);
+      //loaned_data.get().value("MyParticipantHandle",(int8_t)arr[i]);
+      //loaned_data.return_loan();
+      //DynamicData my_participant_handle_element(my_participant_handle_type);
+      //my_participant_handle.value(i+1, arr[i]);
+
+    }
+    std::cout << std::endl;
+    //this->getMyDataSample()->value("MyParticipantHandle", my_participant_handle);
+    
+    // Brute force way to load the handle into the sample
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[0]", (uint8_t)arr[0]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[1]", (uint8_t)arr[1]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[2]", (uint8_t)arr[2]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[3]", (uint8_t)arr[3]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[4]", (uint8_t)arr[4]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[5]", (uint8_t)arr[5]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[6]", (uint8_t)arr[6]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[7]", (uint8_t)arr[7]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[8]", (uint8_t)arr[8]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[9]", (uint8_t)arr[9]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[10]", (uint8_t)arr[10]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[11]", (uint8_t)arr[11]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[12]", (uint8_t)arr[12]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[13]", (uint8_t)arr[13]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[14]", (uint8_t)arr[14]);
+    this->getMyDataSample()->value<uint8_t>("MyParticipantHandle[15]", (uint8_t)arr[15]);
+    
+  }
+  
+    
+  // write() is effectively a runtime down cast for periodic data
+  void HeartbeatWtr::write(void) {
+    this->topicWriter.write(*this->getMyDataSample());
+  };
+  
+
+  HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant)
+    : Reader(participant, "ControllerHeartbeat", "subscriber::controller_hb_topic_reader"){
+  };
+
+  void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data) {
+  };
+        
 
 
 } // namespace
