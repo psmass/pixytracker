@@ -13,7 +13,6 @@
 #include <dds/dds.hpp>
 #include "topics.hpp"
 #include "gimbal.hpp"
-#include <sstream>
 
 namespace MODULE
 {
@@ -31,7 +30,6 @@ namespace MODULE
     memcpy(&guid,array,16);
     return guid;
   }
-
 
   // routine to put Instance Handle in an array of 8 bit ints
   void convertInstanceHandleToIArray (uint8_t *array, const dds::core::InstanceHandle& instanceHandle ) {
@@ -88,7 +86,9 @@ namespace MODULE
 	     const dds::domain::DomainParticipant participant,
 	     bool periodic,
 	     dds::core::Duration period)
-    : Writer(participant, "ControllerHeartbeat", "publisher::controller_hb_topic_writer", periodic, period) {
+    : Writer(participant, "ControllerHeartbeat", \
+	     "publisher::controller_hb_topic_writer",\
+	     periodic, period) {
 
     /* Get my participant Instance Handle and send it rather than Guids.
        We'll need to convert instance handles to GUIDS to use the math operators. 
@@ -119,7 +119,8 @@ namespace MODULE
   
 
   HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant)
-    : Reader(participant, "ControllerHeartbeat", "subscriber::controller_hb_topic_reader"){
+    : Reader(participant, "ControllerHeartbeat", "subscriber::controller_hb_topic_reader")
+    {
   };
 
   void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data) {
@@ -138,19 +139,38 @@ namespace MODULE
 
     /*
     // Test Guid Math operators - seems to work fine
-    uint8_t i[16] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4};
+    const uint8_t i[16] {7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4};
     std::cout << "String: " << i << std::endl;
     rti::core::Guid myMadeupGuid = convertIArrayToGuid(i);
     std::cout << "TestGuid: " << myMadeupGuid << std::endl;
 
-    if (myMadeupGuid > myGuid)
+    if (myMadeupGuid > hbGuid)
       std::cout << "Madeup Guid is larger" << std::endl;
     else
       std::cout << "myGuid is larger" << std::endl;
     */
     
   };
-        
 
 
-} // namespace
+  VoteWtr::VoteWtr(const dds::domain::DomainParticipant participant,
+			bool periodic,
+			dds::core::Duration period)
+    : Writer(participant, "VoteType", \
+	     "publisher::vote_topic_writer",\
+	     periodic, period)
+  {
+  }
+
+  VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant)
+    : Reader(participant, "VoteType", "subscriber::vote_topic_reader")
+  {
+  }
+
+  void VoteRdr::handler(dds::core::xtypes::DynamicData& data)
+  {
+    std::cout << "Received Vote" << std::endl;
+  }
+    
+} // namespace MODULE
+

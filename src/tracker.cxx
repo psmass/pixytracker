@@ -40,6 +40,8 @@ void run_tracker_application(unsigned int tracked_channel) {
     HeartbeatWtr controller_hb_wtr(participant, PERIODIC, DEFAULT_PERIOD);
     HeartbeatRdr controller_hb_rdr(participant);
 
+    dds::domain::ignore(participant, participant.instance_handle());
+
     shapes_reader.runThread();
     controller_hb_rdr.runThread();
     controller_hb_wtr.runThread();

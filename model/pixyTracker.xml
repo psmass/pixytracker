@@ -31,6 +31,12 @@
       <struct name="ControllerHeartbeat" extensibility="appendable">
         <member name="MyParticipantHandle" type="uint8" sequenceMaxLength="16" key="true"/>
       </struct>
+      <struct name="VoteType" extensibility="appendable">
+        <member name="Primary" type="uint8" sequenceMaxLength="16"/>
+        <member name="CtrlRelNum1" type="uint8" sequenceMaxLength="16"/>
+        <member name="CtrlRelNum2" type="uint8" sequenceMaxLength="16"/>
+        <member name="CtrlRelNum3" type="uint8" sequenceMaxLength="16"/>
+      </struct>
     </types>
 
     <qos_library name="PixyTrackerQOS_Library">
@@ -101,9 +107,11 @@
         <register_type name="ServoControl" type_ref="ServoControl"/>
         <register_type name="ShapeTypeExtended" type_ref="ShapeTypeExtended"/>
         <register_type name="ControllerHeartbeat" type_ref="ControllerHeartbeat"/>
+        <register_type name="Vote" type_ref="VoteType"/>
         <topic name="Circle" register_type_ref="ShapeTypeExtended"/>
         <topic name="pixy/servo_control" register_type_ref="ServoControl"/>
         <topic name="controller_heartbeat" register_type_ref="ControllerHeartbeat"/>
+        <topic name="vote" register_type_ref="Vote"/>
       </domain>
     </domain_library>
 
@@ -115,6 +123,13 @@
             </datawriter_qos>
           </data_writer>
           <data_writer name="controller_hb_topic_writer" topic_ref="controller_heartbeat"/>
+          <data_writer name="vote_topic_writer" topic_ref="vote">
+            <datawriter_qos>
+              <durability>
+                <kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+              </durability>
+            </datawriter_qos>
+          </data_writer>
         </publisher>
         <subscriber name="subscriber">
           <data_reader name="shape_topic_reader" topic_ref="Circle">
@@ -126,6 +141,13 @@
             </content_filter>
           </data_reader>
           <data_reader name="controller_hb_topic_reader" topic_ref="controller_heartbeat"/>
+          <data_reader name="vote_topic_reader" topic_ref="vote">
+            <datareader_qos>
+              <durability>
+                <kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+              </durability>
+            </datareader_qos>
+          </data_reader>
         </subscriber>
       </domain_participant>
     </domain_participant_library>

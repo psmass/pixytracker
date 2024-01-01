@@ -89,7 +89,7 @@ namespace MODULE
     HeartbeatWtr(
 	     const dds::domain::DomainParticipant participant,
 	     bool periodic = false,
-	     dds::core::Duration period =std::chrono::seconds(4));
+	     dds::core::Duration period=std::chrono::seconds(4));
     
     ~HeartbeatWtr(void){};
 
@@ -102,7 +102,9 @@ namespace MODULE
 
   class HeartbeatRdr : public Reader {
   public:
+    // Readers are not going to listen to thier own participants hbs
     HeartbeatRdr(const dds::domain::DomainParticipant participant);
+    // const dds::core::InstanceHandle voteWtrIhandle);
     
     ~HeartbeatRdr(void){};
 
@@ -110,8 +112,33 @@ namespace MODULE
         
 
   };
-    
 
+  class VoteWtr : public Writer {
+  public:
+    VoteWtr(
+	    const dds::domain::DomainParticipant participant,
+	    bool periodic = false,
+	    dds::core::Duration period=std::chrono::seconds(4));
+
+    ~VoteWtr(void) {};
+    
+    // write() is effectively a runtime down cast for periodic data
+    void write() {};
+
+  };
+
+  class VoteRdr : public Reader {
+  public:
+    // Readers are not going to listen to thier own participants vote
+    VoteRdr(const dds::domain::DomainParticipant participant);
+    // const dds::core::InstanceHandle voteWtrIhandle);
+    
+    
+    ~VoteRdr(void) {};
+
+    void handler(dds::core::xtypes::DynamicData& data);    
+
+  };
 } // namespace MODULE
 
 #endif // TOPICS_HPP
