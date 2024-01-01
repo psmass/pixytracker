@@ -41,6 +41,7 @@ void run_tracker_application(unsigned int tracked_channel) {
     HeartbeatRdr controller_hb_rdr(participant);
 
     shapes_reader.runThread();
+    controller_hb_rdr.runThread();
     controller_hb_wtr.runThread();
 
     // *** START WRITER LISTENERS or MONITOR THREADS (This step Optional)
@@ -59,6 +60,8 @@ void run_tracker_application(unsigned int tracked_channel) {
 
    
     shapes_reader.Reader::getThreadHndl()->join();
+    controller_hb_rdr.Reader::getThreadHndl()->join();
+    controller_hb_wtr.Writer::getThreadHndl()->join();
     // give threads a second to shut down
     rti::util::sleep(dds::core::Duration(1));
     std::cout << "Tracker main thread shutting down" << std::endl;

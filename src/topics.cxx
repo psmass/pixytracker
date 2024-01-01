@@ -13,6 +13,7 @@
 #include <dds/dds.hpp>
 #include "topics.hpp"
 #include "gimbal.hpp"
+#include <sstream>
 
 namespace MODULE
 {
@@ -25,11 +26,12 @@ namespace MODULE
   }
 
   // test routine to create a Guid to try comparison operators
-  rti::core::Guid convertIntToGuid ( const int32_t& i ) {
+  rti::core::Guid convertIArrayToGuid ( const uint8_t *array ) {
     rti::core::Guid guid;
-    memcpy(&guid,reinterpret_cast<DDS_Octet const *>(&i ),16);
+    memcpy(&guid,array,16);
     return guid;
   }
+
 
   // routine to put Instance Handle in an array of 8 bit ints
   void convertInstanceHandleToIArray (uint8_t *array, const dds::core::InstanceHandle& instanceHandle ) {
@@ -98,19 +100,6 @@ namespace MODULE
     rti::core::Guid myGuid = convertToGuid(handle);
     std::cout << "GUID Convert: " << myGuid << std::endl;
 
-    /* // Test Guid Math operators - seems to work fine
-
-    const int32_t i = 20082004;
-    rti::core::Guid myMadeupGuid = convertIntToGuid(i);
-
-    if (myMadeupGuid > myGuid)
-      std::cout << "Madeup Guid is larger" << std::endl;
-    else
-      std::cout << "myGuid is larger" << std::endl;
-
-    std::cout << "GUID Int Convert: " << myMadeupGuid << std::endl;
-    */
-
     uint8_t iarr[16];
     convertInstanceHandleToIArray(iarr, handle);
 
@@ -134,6 +123,32 @@ namespace MODULE
   };
 
   void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data) {
+    std::vector<uint8_t> seq_values = data.get_values<uint8_t>("MyParticipantHandle");
+
+    std::cout << "Received Heartbeat: GUID=";
+    
+    uint8_t iarr[16];
+    for (int i=15; i>=0; i--) {
+      iarr[i]=seq_values.back();
+      seq_values.pop_back();
+    }
+
+    rti::core::Guid hbGuid= convertIArrayToGuid(iarr);
+    std::cout << hbGuid << std::endl;
+
+    /*
+    // Test Guid Math operators - seems to work fine
+    uint8_t i[16] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4};
+    std::cout << "String: " << i << std::endl;
+    rti::core::Guid myMadeupGuid = convertIArrayToGuid(i);
+    std::cout << "TestGuid: " << myMadeupGuid << std::endl;
+
+    if (myMadeupGuid > myGuid)
+      std::cout << "Madeup Guid is larger" << std::endl;
+    else
+      std::cout << "myGuid is larger" << std::endl;
+    */
+    
   };
         
 
