@@ -104,7 +104,6 @@ namespace MODULE
   public:
     // Readers are not going to listen to thier own participants hbs
     HeartbeatRdr(const dds::domain::DomainParticipant participant);
-    // const dds::core::InstanceHandle voteWtrIhandle);
     
     ~HeartbeatRdr(void){};
 
@@ -130,9 +129,7 @@ namespace MODULE
   class VoteRdr : public Reader {
   public:
     // Readers are not going to listen to thier own participants vote
-    VoteRdr(const dds::domain::DomainParticipant participant);
-    // const dds::core::InstanceHandle voteWtrIhandle);
-    
+    VoteRdr(const dds::domain::DomainParticipant participant);   
     
     ~VoteRdr(void) {};
 

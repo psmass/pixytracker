@@ -28,7 +28,7 @@
         <!-- Which profiles are enabled -->
         <member name="profileEnabled" type="boolean" arrayDimensions="7"/>
       </struct>
-      <struct name="ControllerHeartbeat" extensibility="appendable">
+      <struct name="TrackerHeartbeat" extensibility="appendable">
         <member name="MyParticipantHandle" type="uint8" sequenceMaxLength="16" key="true"/>
       </struct>
       <struct name="VoteType" extensibility="appendable">
@@ -106,11 +106,11 @@
       <domain name="PixyShapesDomain" domain_id="53">
         <register_type name="ServoControl" type_ref="ServoControl"/>
         <register_type name="ShapeTypeExtended" type_ref="ShapeTypeExtended"/>
-        <register_type name="ControllerHeartbeat" type_ref="ControllerHeartbeat"/>
+        <register_type name="TrackerHeartbeat" type_ref="TrackerHeartbeat"/>
         <register_type name="Vote" type_ref="VoteType"/>
         <topic name="Circle" register_type_ref="ShapeTypeExtended"/>
         <topic name="pixy/servo_control" register_type_ref="ServoControl"/>
-        <topic name="controller_heartbeat" register_type_ref="ControllerHeartbeat"/>
+        <topic name="tracker_heartbeat" register_type_ref="TrackerHeartbeat"/>
         <topic name="vote" register_type_ref="Vote"/>
       </domain>
     </domain_library>
@@ -122,7 +122,7 @@
             <datawriter_qos base_name="PixyTrackerQOS_Library::Exclusive">
             </datawriter_qos>
           </data_writer>
-          <data_writer name="controller_hb_topic_writer" topic_ref="controller_heartbeat"/>
+          <data_writer name="tracker_hb_topic_writer" topic_ref="tracker_heartbeat"/>
           <data_writer name="vote_topic_writer" topic_ref="vote">
             <datawriter_qos>
               <durability>
@@ -140,7 +140,7 @@
               </expression_parameters>
             </content_filter>
           </data_reader>
-          <data_reader name="controller_hb_topic_reader" topic_ref="controller_heartbeat"/>
+          <data_reader name="tracker_hb_topic_reader" topic_ref="tracker_heartbeat"/>
           <data_reader name="vote_topic_reader" topic_ref="vote">
             <datareader_qos>
               <durability>

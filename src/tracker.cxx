@@ -37,14 +37,18 @@ void run_tracker_application(unsigned int tracked_channel) {
     // Instantiate Topic Readers and Writers w/threads
     ServoWtr servo_writer(participant); 
     ShapesRdr shapes_reader(participant, &servo_writer);
-    HeartbeatWtr controller_hb_wtr(participant, PERIODIC, DEFAULT_PERIOD);
-    HeartbeatRdr controller_hb_rdr(participant);
-
+    HeartbeatWtr tracker_hb_wtr(participant, PERIODIC, DEFAULT_PERIOD);
+    HeartbeatRdr tracker_hb_rdr(participant);
+    VoteWtr vote_wtr(participant);
+    VoteRdr vote_rdr(participant);
+    
+    // Ignore our own writers (e.g. heartbeat and votes
     dds::domain::ignore(participant, participant.instance_handle());
 
     shapes_reader.runThread();
-    controller_hb_rdr.runThread();
-    controller_hb_wtr.runThread();
+    tracker_hb_rdr.runThread();
+    tracker_hb_wtr.runThread();
+    vote_rdr.runThread();
 
     // *** START WRITER LISTENERS or MONITOR THREADS (This step Optional)
     //servo_writer.runThread() # start a statuses monitor thread on the DA Writer
@@ -60,10 +64,10 @@ void run_tracker_application(unsigned int tracked_channel) {
         rti::util::sleep(dds::core::Duration(1));
     }
 
-   
+    vote_rdr.Reader::getThreadHndl()->join();
     shapes_reader.Reader::getThreadHndl()->join();
-    controller_hb_rdr.Reader::getThreadHndl()->join();
-    controller_hb_wtr.Writer::getThreadHndl()->join();
+    tracker_hb_rdr.Reader::getThreadHndl()->join();
+    tracker_hb_wtr.Writer::getThreadHndl()->join();
     // give threads a second to shut down
     rti::util::sleep(dds::core::Duration(1));
     std::cout << "Tracker main thread shutting down" << std::endl;

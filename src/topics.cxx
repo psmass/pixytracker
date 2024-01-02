@@ -86,8 +86,8 @@ namespace MODULE
 	     const dds::domain::DomainParticipant participant,
 	     bool periodic,
 	     dds::core::Duration period)
-    : Writer(participant, "ControllerHeartbeat", \
-	     "publisher::controller_hb_topic_writer",\
+    : Writer(participant, "TrackerHeartbeat", \
+	     "publisher::tracker_hb_topic_writer",\
 	     periodic, period) {
 
     /* Get my participant Instance Handle and send it rather than Guids.
@@ -119,7 +119,7 @@ namespace MODULE
   
 
   HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant)
-    : Reader(participant, "ControllerHeartbeat", "subscriber::controller_hb_topic_reader")
+    : Reader(participant, "TrackerHeartbeat", "subscriber::tracker_hb_topic_reader")
     {
   };
 
