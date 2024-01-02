@@ -17,7 +17,7 @@
 namespace MODULE
 {
 
-  /* Helper functions to covert betwen InstanceHandles, GUIDs and arrays
+  /* Helper functions to covert between InstanceHandles, GUIDs and arrays
    */
   
   // need to covert Instance Handles to Guids to use the math operators to compare values
@@ -102,8 +102,8 @@ namespace MODULE
   };
 
   HeartbeatWtr::HeartbeatWtr(
-			     RedundancyInfo* redundancy_info_obj,
 			     const dds::domain::DomainParticipant participant,
+			     RedundancyInfo* redundancy_info_obj,
 			     bool periodic,
 			     dds::core::Duration period)
     : Writer(participant, "TrackerHeartbeat", \
@@ -130,7 +130,8 @@ namespace MODULE
   };
   
 
-  HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant)
+  HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant,
+			     RedundancyInfo* redundancy_info_obj)
     : Reader(participant, "TrackerHeartbeat", "subscriber::tracker_hb_topic_reader")
     {
   };
@@ -166,15 +167,17 @@ namespace MODULE
 
 
   VoteWtr::VoteWtr(const dds::domain::DomainParticipant participant,
-			bool periodic,
-			dds::core::Duration period)
+		   RedundancyInfo* redundancy_info_obj,
+		   bool periodic,
+		   dds::core::Duration period)
     : Writer(participant, "VoteType", \
 	     "publisher::vote_topic_writer",\
 	     periodic, period)
   {
   }
 
-  VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant)
+  VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant,
+		   RedundancyInfo* redundancy_info_obj)
     : Reader(participant, "VoteType", "subscriber::vote_topic_reader")
   {
   }

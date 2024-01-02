@@ -38,10 +38,10 @@ void run_tracker_application(unsigned int tracked_channel) {
     // Instantiate Topic Readers and Writers w/threads
     ServoWtr servo_writer(participant); 
     ShapesRdr shapes_reader(participant, &servo_writer);
-    HeartbeatWtr tracker_hb_wtr(&redundancy_info, participant, PERIODIC, DEFAULT_PERIOD);
-    HeartbeatRdr tracker_hb_rdr(participant);
-    VoteWtr vote_wtr(participant);
-    VoteRdr vote_rdr(participant);
+    HeartbeatWtr tracker_hb_wtr(participant, &redundancy_info, PERIODIC, DEFAULT_PERIOD);
+    HeartbeatRdr tracker_hb_rdr(participant, &redundancy_info);
+    VoteWtr vote_wtr(participant, &redundancy_info);
+    VoteRdr vote_rdr(participant, &redundancy_info);
     
     // Ignore our own writers (e.g. heartbeat and votes
     dds::domain::ignore(participant, participant.instance_handle());

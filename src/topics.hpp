@@ -104,10 +104,11 @@ namespace MODULE
   class HeartbeatWtr : public Writer {
   public:
     HeartbeatWtr(
-		 RedundancyInfo* redundancy_info_obj,
 		 const dds::domain::DomainParticipant participant,
+		 RedundancyInfo* redundancy_info_obj,
 		 bool periodic = false,
 		 dds::core::Duration period=std::chrono::seconds(4));
+
     
     ~HeartbeatWtr(void){};
 
@@ -121,7 +122,8 @@ namespace MODULE
   class HeartbeatRdr : public Reader {
   public:
     // Readers are not going to listen to thier own participants hbs
-    HeartbeatRdr(const dds::domain::DomainParticipant participant);
+    HeartbeatRdr(const dds::domain::DomainParticipant participant,
+		 RedundancyInfo* redundancy_info_obj);
     
     ~HeartbeatRdr(void){};
 
@@ -133,6 +135,7 @@ namespace MODULE
   public:
     VoteWtr(
 	    const dds::domain::DomainParticipant participant,
+	    RedundancyInfo* redundancy_info_obj,
 	    bool periodic = false,
 	    dds::core::Duration period=std::chrono::seconds(4));
 
@@ -146,7 +149,8 @@ namespace MODULE
   class VoteRdr : public Reader {
   public:
     // Readers are not going to listen to thier own participants vote
-    VoteRdr(const dds::domain::DomainParticipant participant);   
+    VoteRdr(const dds::domain::DomainParticipant participant,
+	    RedundancyInfo* redundancy_info_obj);   
     
     ~VoteRdr(void) {};
 
