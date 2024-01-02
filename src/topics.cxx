@@ -36,7 +36,12 @@ namespace MODULE
 
   // routine to put Instance Handle in an array of 8 bit ints
   void convertInstanceHandleToIArray (uint8_t *array, const dds::core::InstanceHandle& instanceHandle ) {
-    memcpy(array,reinterpret_cast<DDS_Octet const *>(&instanceHandle ),16);
+    memcpy(array,reinterpret_cast<DDS_Octet const *>(&instanceHandle),16);
+  }
+
+  // routine to put Guid in an array of 8 bit ints
+  void convertGuidToIArray (uint8_t *array, rti::core::Guid guid ) {
+    memcpy(array,reinterpret_cast<DDS_Octet const *>(&guid),16);
   }
 
   
@@ -97,16 +102,19 @@ namespace MODULE
   };
 
   HeartbeatWtr::HeartbeatWtr(
-	     const dds::domain::DomainParticipant participant,
-	     bool periodic,
-	     dds::core::Duration period)
+			     RedundancyInfo* redundancy_info_obj,
+			     const dds::domain::DomainParticipant participant,
+			     bool periodic,
+			     dds::core::Duration period)
     : Writer(participant, "TrackerHeartbeat", \
 	     "publisher::tracker_hb_topic_writer",\
 	     periodic, period) {
 
     uint8_t iarr[16];
-    convertInstanceHandleToIArray(iarr, participant->instance_handle());
+    //convertInstanceHandleToIArray(iarr, participant->instance_handle());
+    convertGuidToIArray(iarr, redundancy_info_obj->get_my_guid());
 
+    
     std::vector<uint8_t> seq_values;
     for (int i=0; i<16; i++)
       seq_values.push_back(iarr[i]);

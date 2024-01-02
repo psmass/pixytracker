@@ -55,6 +55,8 @@ namespace MODULE
     
     RedundancyInfo(const dds::domain::DomainParticipant participant);
     ~RedundancyInfo(void){}
+
+    rti::core::Guid get_my_guid() {return this->my_p_guid;}
     
   private:
     uint8_t my_ordinal {0}; // ordinals are 1,2,3 - 0 will indicate not decided
@@ -102,9 +104,10 @@ namespace MODULE
   class HeartbeatWtr : public Writer {
   public:
     HeartbeatWtr(
-	     const dds::domain::DomainParticipant participant,
-	     bool periodic = false,
-	     dds::core::Duration period=std::chrono::seconds(4));
+		 RedundancyInfo* redundancy_info_obj,
+		 const dds::domain::DomainParticipant participant,
+		 bool periodic = false,
+		 dds::core::Duration period=std::chrono::seconds(4));
     
     ~HeartbeatWtr(void){};
 
