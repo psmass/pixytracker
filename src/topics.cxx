@@ -16,6 +16,9 @@
 
 namespace MODULE
 {
+
+  /* Helper functions to covert betwen InstanceHandles, GUIDs and arrays
+   */
   
   // need to covert Instance Handles to Guids to use the math operators to compare values
   rti::core::Guid convertToGuid ( const dds::core::InstanceHandle& instanceHandle ) {
@@ -36,6 +39,19 @@ namespace MODULE
     memcpy(array,reinterpret_cast<DDS_Octet const *>(&instanceHandle ),16);
   }
 
+  
+  RedundancyInfo::RedundancyInfo(const dds::domain::DomainParticipant participant) {
+    /* Get my participant Instance Handle and send it rather than Guids.
+       We'll need to convert instance handles to GUIDS to use the math operators. 
+       Note sure how to get Guid directly and can't do math on Instance handle.
+     */
+    const dds::core::InstanceHandle handle=participant->instance_handle();
+    std::cout << "INSTANCE HANDLE: " << handle << std::endl;
+
+    this->my_p_guid  = convertToGuid(handle);
+    std::cout << "GUID Convert: " << my_p_guid << std::endl;
+    
+  }
   
   ServoWtr::ServoWtr(
 	const dds::domain::DomainParticipant participant,
@@ -58,8 +74,6 @@ namespace MODULE
       this->frame_count = 0;
       std::cout << "P: " << gimbal.get_pan_position() \
 		<<" T: " << gimbal.get_tilt_position() << "          ""\r" << std::flush;
-      //printf("P: %d T: %d   \r", gimbal.get_pan_position(), gimbal.get_tilt_position());
-      //fflush(stdout);
     }
   };
 
@@ -90,25 +104,15 @@ namespace MODULE
 	     "publisher::tracker_hb_topic_writer",\
 	     periodic, period) {
 
-    /* Get my participant Instance Handle and send it rather than Guids.
-       We'll need to convert instance handles to GUIDS to use the math operators. 
-       Note sure how to get Guid directly and can't do math on Instance handle.
-     */
-    const dds::core::InstanceHandle handle=participant->instance_handle();
-    std::cout << "INSTANCE HANDLE: " << handle << std::endl;
-
-    rti::core::Guid myGuid = convertToGuid(handle);
-    std::cout << "GUID Convert: " << myGuid << std::endl;
-
     uint8_t iarr[16];
-    convertInstanceHandleToIArray(iarr, handle);
+    convertInstanceHandleToIArray(iarr, participant->instance_handle());
 
     std::vector<uint8_t> seq_values;
     for (int i=0; i<16; i++)
       seq_values.push_back(iarr[i]);
-
+    
     this->getMyDataSample()->set_values("MyParticipantHandle", seq_values);
-   
+ 
   }
   
     

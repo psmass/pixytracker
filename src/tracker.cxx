@@ -33,7 +33,8 @@ void run_tracker_application(unsigned int tracked_channel) {
     dds::domain::DomainParticipant participant =
       qos_provider->create_participant_from_config("PixyTrackerParticipant_Library::PixyTrackerParticipant");
 
-
+    RedundancyInfo redundancy_info(participant); // info to share beteween Heartbeat and Vote logic
+    
     // Instantiate Topic Readers and Writers w/threads
     ServoWtr servo_writer(participant); 
     ShapesRdr shapes_reader(participant, &servo_writer);

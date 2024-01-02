@@ -53,7 +53,7 @@ namespace MODULE
   */
   public: 
     
-    RedundancyInfo(const dds::domain::DomainParticipant participant);
+    RedundancyInfo(void);
     ~RedundancyInfo(void){}
     
   private:
@@ -78,8 +78,7 @@ namespace MODULE
         
   private:
     DDS_DynamicData * servo_data;
-    GIMBAL::
-    Gimbal gimbal;
+    GIMBAL::Gimbal gimbal;
     int frame_count {0};
   };
 
