@@ -105,7 +105,7 @@ namespace MODULE
   public:
     HeartbeatWtr(
 		 const dds::domain::DomainParticipant participant,
-		 RedundancyInfo* redundancy_info_obj,
+		 RedundancyInfo redundancy_info_obj,
 		 bool periodic = false,
 		 dds::core::Duration period=std::chrono::seconds(4));
 
@@ -123,7 +123,7 @@ namespace MODULE
   public:
     // Readers are not going to listen to thier own participants hbs
     HeartbeatRdr(const dds::domain::DomainParticipant participant,
-		 RedundancyInfo* redundancy_info_obj);
+		 RedundancyInfo redundancy_info_obj);
     
     ~HeartbeatRdr(void){};
 
@@ -135,7 +135,7 @@ namespace MODULE
   public:
     VoteWtr(
 	    const dds::domain::DomainParticipant participant,
-	    RedundancyInfo* redundancy_info_obj,
+	    RedundancyInfo redundancy_info_obj,
 	    bool periodic = false,
 	    dds::core::Duration period=std::chrono::seconds(4));
 
@@ -150,7 +150,7 @@ namespace MODULE
   public:
     // Readers are not going to listen to thier own participants vote
     VoteRdr(const dds::domain::DomainParticipant participant,
-	    RedundancyInfo* redundancy_info_obj);   
+	    RedundancyInfo redundancy_info_obj);   
     
     ~VoteRdr(void) {};
 

@@ -103,7 +103,7 @@ namespace MODULE
 
   HeartbeatWtr::HeartbeatWtr(
 			     const dds::domain::DomainParticipant participant,
-			     RedundancyInfo* redundancy_info_obj,
+			     RedundancyInfo redundancy_info_obj,
 			     bool periodic,
 			     dds::core::Duration period)
     : Writer(participant, "TrackerHeartbeat", \
@@ -112,7 +112,7 @@ namespace MODULE
 
     uint8_t iarr[16];
     //convertInstanceHandleToIArray(iarr, participant->instance_handle());
-    convertGuidToIArray(iarr, redundancy_info_obj->get_my_guid());
+    convertGuidToIArray(iarr, redundancy_info_obj.get_my_guid());
 
     
     std::vector<uint8_t> seq_values;
@@ -131,7 +131,7 @@ namespace MODULE
   
 
   HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant,
-			     RedundancyInfo* redundancy_info_obj)
+			     RedundancyInfo redundancy_info_obj)
     : Reader(participant, "TrackerHeartbeat", "subscriber::tracker_hb_topic_reader")
     {
   };
@@ -167,7 +167,7 @@ namespace MODULE
 
 
   VoteWtr::VoteWtr(const dds::domain::DomainParticipant participant,
-		   RedundancyInfo* redundancy_info_obj,
+		   RedundancyInfo redundancy_info_obj,
 		   bool periodic,
 		   dds::core::Duration period)
     : Writer(participant, "VoteType", \
@@ -177,7 +177,7 @@ namespace MODULE
   }
 
   VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant,
-		   RedundancyInfo* redundancy_info_obj)
+		   RedundancyInfo redundancy_info_obj)
     : Reader(participant, "VoteType", "subscriber::vote_topic_reader")
   {
   }
