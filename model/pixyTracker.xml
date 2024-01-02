@@ -33,9 +33,8 @@
       </struct>
       <struct name="VoteType" extensibility="appendable">
         <member name="Primary" type="uint8" sequenceMaxLength="16"/>
-        <member name="CtrlRelNum1" type="uint8" sequenceMaxLength="16"/>
-        <member name="CtrlRelNum2" type="uint8" sequenceMaxLength="16"/>
-        <member name="CtrlRelNum3" type="uint8" sequenceMaxLength="16"/>
+        <member name="Secondary" type="uint8" sequenceMaxLength="16"/>
+        <member name="Tertiary" type="uint8" sequenceMaxLength="16"/>
       </struct>
     </types>
 
