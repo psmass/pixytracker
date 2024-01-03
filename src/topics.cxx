@@ -59,9 +59,15 @@ namespace MODULE
     // initialize guid tracking array to my_guid followed by 0's
     uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
     rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
-    this->ordered_array_p_guids[0]=my_p_guid;
-    this->ordered_array_p_guids[1]=ff_guid;
-    this->ordered_array_p_guids[2]=ff_guid;
+    this->ordered_array_p_guid_votes[0].guid=my_p_guid;
+    this->ordered_array_p_guid_votes[0].votes=1; // vote for myself
+    this->ordered_array_p_guid_votes[1].guid=ff_guid;
+    this->ordered_array_p_guid_votes[1].votes=0;     
+    this->ordered_array_p_guid_votes[2].guid=ff_guid;
+    this->ordered_array_p_guid_votes[2].votes=0;     
+    this->primary = ff_guid;
+    this->secondary = ff_guid;
+    this->tertiary = ff_guid;
 
     my_ordinal = 1; // initially 1, changes when we receive durable vote or heartbeats
 
@@ -72,7 +78,7 @@ namespace MODULE
     // first make sure we don't already have this tracker
     bool dup_guid {false};
     for (int i=0; i<3; i++) {
-      if (this->ordered_array_p_guids[i]==hb_guid){
+      if (this->ordered_array_p_guid_votes[i].guid==hb_guid){
 	dup_guid = true;
 	break;
       }
@@ -81,18 +87,20 @@ namespace MODULE
     if (!dup_guid) {
       // This routine is only called if we have << 3 trackers
       // place on the end of the zero-based array and bubble sort
-      this->ordered_array_p_guids[this->number_of_trackers] = hb_guid;
+      this->ordered_array_p_guid_votes[this->number_of_trackers].guid = hb_guid;
       this->number_of_trackers++; // at least two now
 
       rti::core::Guid temp_guid;
       for (int l=0; l<this->number_of_trackers-1; l++) {
 	
 	for (int i=0; i<this->number_of_trackers-1; i++) {
-	  if (this->ordered_array_p_guids[i] > this->ordered_array_p_guids[i+1]) {
+	  if (this->ordered_array_p_guid_votes[i].guid >
+	      this->ordered_array_p_guid_votes[i+1].guid) {
 	    // swap them
-	    temp_guid = this->ordered_array_p_guids[i];
-	    this->ordered_array_p_guids[i] = this->ordered_array_p_guids[i+1];
-	    this->ordered_array_p_guids[i+1] = temp_guid;
+	    temp_guid = this->ordered_array_p_guid_votes[i].guid;
+	    this->ordered_array_p_guid_votes[i].guid = \
+	      this->ordered_array_p_guid_votes[i+1].guid;
+	    this->ordered_array_p_guid_votes[i+1].guid = temp_guid;
 	    // now adjust the ordinal if the moved tracker is mine/self
 	    if (temp_guid == this->my_p_guid) 
 	      this->my_ordinal = i+1;
@@ -101,7 +109,7 @@ namespace MODULE
       }
       std::cout << "DISCOVERED SORTED TRACKERS " << std::endl;
       for (int i=0; i<3; i++) 
-	std::cout << this->ordered_array_p_guids[i] << std::endl;
+	std::cout << this->ordered_array_p_guid_votes[i].guid << std::endl;
 			      
     } // if dup
   }

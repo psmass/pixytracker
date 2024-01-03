@@ -69,7 +69,6 @@ namespace MODULE
     int number_of_trackers {1};
     rti::core::Guid my_p_guid;
     rti::core::Guid ff_guid; // null guid
-    rti::core::Guid ordered_array_p_guids[3];
     rti::core::Guid primary, secondary, tertiary;
     guidVotes ordered_array_p_guid_votes[3];
   };
