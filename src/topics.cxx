@@ -60,6 +60,7 @@ namespace MODULE
     uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
     rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
     this->ordered_array_p_guids[0].votes=1; // vote for myself
+    this->ordered_array_p_guids[0].state=OPERATIONAL; // vote for myself    
     this->ordered_array_p_guids[1].guid=ff_guid;
     this->ordered_array_p_guids[2].guid=ff_guid;
 
@@ -107,6 +108,81 @@ namespace MODULE
 			      
     } // if dup
   }
+
+  void RedundancyInfo::assessVote() {
+    enum Roll roll_array[3]{PRIMARY, SECONDARY, TERTIARY};
+
+    // first is there already a primary and secondary? Existing rolls
+    // take presidence over votes
+    // note: if we were a new controller, we sat in the INITIALIZE to get heartbeats
+    // form other controllers or 10 sec. 
+
+    bool was_operational{false}, is_primary {false}, is_secondary{false}, is_tertiary{false};
+    
+    for (int i=0; i<3; i++){
+      switch(this->ordered_array_p_guids[i].roll) {
+      case UNASSIGNED:
+	break;
+      case PRIMARY:
+	was_operational = true;
+	is_primary = true;
+	break;
+      case SECONDARY:
+	was_operational = true;
+	is_secondary = true;
+	break;
+      case TERTIARY:
+	was_operational = true;	
+	is_tertiary = true;
+	break;
+      default:
+	std::cerr << "switch assessVote error and abort" << std::endl;
+      }
+    }
+
+    // see if the system was operational (the only way we know this is
+    // that at least one controller (primary or secondary) sent the
+    // durable vote topic. 
+    // if tertiary was running things that's a double fault.
+    //
+    // Promote everyone if secondary is running the show.
+    if (was_operational) {
+      if (!is_primary) {
+	for (int i=0; i<3; i++) {
+	  switch(this->ordered_array_p_guids[i].roll) {
+	  case UNASSIGNED:
+	    break;
+	  case PRIMARY:
+	    std::cerr << "assessVote Primary when already no primary" << std::endl;
+	    break;
+	  case SECONDARY:
+	    this->ordered_array_p_guids[i].roll=PRIMARY;
+	    break;
+	  case TERTIARY:
+	    this->ordered_array_p_guids[i].roll=SECONDARY;
+	    break;
+	  default:
+	    std::cerr << "switch assessVote error and abort" << std::endl;
+	  }
+	}
+      } // if no primary
+      // was a primary (or is now) so now bring this tracker in as
+      // secondary or teritary - ordinals are 1 based
+      if (!is_secondary) 
+	this->ordered_array_p_guids[this->my_ordinal-1].roll=SECONDARY;
+      else
+	this->ordered_array_p_guids[this->my_ordinal-1].roll=TERTIARY;
+    } else { // system is coming up new, so ordinal voting.
+      for (int i=0; i<this->number_of_trackers; i++)
+	this->ordered_array_p_guids[i].roll=roll_array[i];
+    }
+    std::cout << "THE VOTE ASSESSMENT: " << std::endl;
+    for (int i=0; i<3; i++)
+      std::cout << this->ordered_array_p_guids[i].guid
+		<< " Roll #: " << this->ordered_array_p_guids[i].roll
+		<< std::endl;
+    
+  } // end Redundacy::assessVote
     
   ServoWtr::ServoWtr(
 	const dds::domain::DomainParticipant participant,

@@ -47,8 +47,8 @@ namespace MODULE
 
 */
   
-  enum State {FAILED, OPERATIONAL};
-  enum Roll {PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
+  enum State {FAILED = 0, OPERATIONAL};
+  enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
   struct TrackerState {
     rti::core::Guid guid;
     int votes {0};
@@ -70,6 +70,7 @@ namespace MODULE
     
     void sortSaveHbGuid(rti::core::Guid hb_guid);
     int numberOfTrackers(void) {return this->number_of_trackers;}
+    void assessVote(void);
     
   private:
     int my_ordinal {1}; // ordinals of trackers are 1,2,3

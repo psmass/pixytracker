@@ -96,13 +96,17 @@ void run_tracker_application(unsigned int tracked_channel) {
       switch (state) {
 
       case INITIALIZE:
+	// we stay here waiting for up to 3 trackers or upto 10 seconds
 	std::cout << "i." << redundancy_info.numberOfTrackers() << std::flush;
 	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==10)
 	  state=VOTE;
 	break;
 	
       case VOTE:
+	// this state tranitions quickly once we vote
 	std::cout << "\n STATE: VOTING" << std::endl;
+	redundancy_info.assessVote(); // place my vote for Primary/Sec/Tertiary
+	state=STEADY_STATE;
 	break;
 	
       case STEADY_STATE:
