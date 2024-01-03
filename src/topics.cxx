@@ -127,8 +127,8 @@ namespace MODULE
     this->topicWriter.write(*this->getMyDataSample());
     if (this->frame_count++ > 10) {
       this->frame_count = 0;
-      std::cout << "P: " << gimbal.get_pan_position() \
-		<<" T: " << gimbal.get_tilt_position() << "          ""\r" << std::flush;
+      //std::cout << "P: " << gimbal.get_pan_position()			\
+//		<<" T: " << gimbal.get_tilt_position() << "          ""\r" << std::flush;
     }
   };
 
@@ -153,18 +153,18 @@ namespace MODULE
 
   HeartbeatWtr::HeartbeatWtr(
 			     const dds::domain::DomainParticipant participant,
-			     RedundancyInfo redundancy_info_obj,
+			     RedundancyInfo* redundancy_info_obj,
 			     bool periodic,
 			     dds::core::Duration period) 
     : Writer(participant, "TrackerHeartbeat", \
 	     "publisher::tracker_hb_topic_writer",\
 	     periodic, period) {
 
-    this->my_redundancy_info_obj = &redundancy_info_obj;
+    this->my_redundancy_info_obj = redundancy_info_obj;
 
     // get my guid and place it in the heartbeat sample
     uint8_t iarr[16];
-    convertGuidToIArray(iarr, redundancy_info_obj.getMyGuid());
+    convertGuidToIArray(iarr, redundancy_info_obj->getMyGuid());
 
     std::vector<uint8_t> seq_values;
     for (int i=0; i<16; i++)
@@ -182,10 +182,10 @@ namespace MODULE
   
 
   HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant,
-			     RedundancyInfo redundancy_info_obj)
+			     RedundancyInfo* redundancy_info_obj)
     : Reader(participant, "TrackerHeartbeat", "subscriber::tracker_hb_topic_reader")
   {
-    this->my_redundancy_info_obj = &redundancy_info_obj;
+    this->my_redundancy_info_obj = redundancy_info_obj;
   };
 
   void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data) {
@@ -226,21 +226,21 @@ namespace MODULE
 
 
   VoteWtr::VoteWtr(const dds::domain::DomainParticipant participant,
-		   RedundancyInfo redundancy_info_obj,
+		   RedundancyInfo* redundancy_info_obj,
 		   bool periodic,
 		   dds::core::Duration period)
     : Writer(participant, "VoteType", \
 	     "publisher::vote_topic_writer",\
 	     periodic, period)
   {
-     this->my_redundancy_info_obj = &redundancy_info_obj;
+     this->my_redundancy_info_obj = redundancy_info_obj;
   }
 
   VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant,
-		   RedundancyInfo redundancy_info_obj)
+		   RedundancyInfo* redundancy_info_obj)
     : Reader(participant, "VoteType", "subscriber::vote_topic_reader")
   {
-    this->my_redundancy_info_obj = &redundancy_info_obj;    
+    this->my_redundancy_info_obj = redundancy_info_obj;    
   }
 
   void VoteRdr::handler(dds::core::xtypes::DynamicData& data)

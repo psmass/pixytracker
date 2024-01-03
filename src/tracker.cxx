@@ -26,6 +26,8 @@ namespace MODULE
 {
   #define PERIODIC true
   dds::core::Duration DEFAULT_PERIOD {1,0}; // 1 second default writer rate
+
+  enum SM_States {INITIALIZE, VOTE, STEADY_STATE, SHUT_DOWN, ERROR};
   
 void run_tracker_application(unsigned int tracked_channel) {
    // Create the participant
@@ -38,10 +40,10 @@ void run_tracker_application(unsigned int tracked_channel) {
     // Instantiate Topic Readers and Writers w/threads
     ServoWtr servo_writer(participant); 
     ShapesRdr shapes_reader(participant, &servo_writer);
-    HeartbeatWtr tracker_hb_wtr(participant, redundancy_info, PERIODIC, DEFAULT_PERIOD);
-    HeartbeatRdr tracker_hb_rdr(participant, redundancy_info);
-    VoteWtr vote_wtr(participant, redundancy_info);
-    VoteRdr vote_rdr(participant, redundancy_info);
+    HeartbeatWtr tracker_hb_wtr(participant, &redundancy_info, PERIODIC, DEFAULT_PERIOD);
+    HeartbeatRdr tracker_hb_rdr(participant, &redundancy_info);
+    VoteWtr vote_wtr(participant, &redundancy_info);
+    VoteRdr vote_rdr(participant, &redundancy_info);
     
     // Ignore our own writers (e.g. heartbeat and votes
     dds::domain::ignore(participant, participant.instance_handle());
@@ -57,7 +59,9 @@ void run_tracker_application(unsigned int tracked_channel) {
     DefaultWriterListener * listener = new DefaultWriterListener; 
     servo_writer.getMyDataWriter().listener (listener, dds::core::status::StatusMask::all());
 
-
+    enum SM_States state = INITIALIZE;
+    int ten_sec_cnt {0};    // initial worst case wait period to vote
+    
     while (!application::shutdown_requested) {
       //
       // This block describes a state machine implemented int the main thread
@@ -88,9 +92,36 @@ void run_tracker_application(unsigned int tracked_channel) {
       // detected trackers (i.e. loss of heartbeat or new tracker heartbeat),
       // or it may SHUT_DOWN if directed.
       //
+
+      switch (state) {
+
+      case INITIALIZE:
+	std::cout << "i." << redundancy_info.numberOfTrackers() << std::flush;
+	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==10)
+	  state=VOTE;
+	break;
+	
+      case VOTE:
+	std::cout << "\n STATE: VOTING" << std::endl;
+	break;
+	
+      case STEADY_STATE:
+	std::cout << "." << std::flush;
+	break;
+	
+      case SHUT_DOWN:
+	break;
+	
+      case ERROR: // detectable error state
+	// print message/red light LEDs and SHUT DOWN
+	state=SHUT_DOWN;
+	break;
+      default:
+	;
+      } // switch
       
-      std::cout << "." << std::flush;                 
       rti::util::sleep(dds::core::Duration(1));
+      ten_sec_cnt++;
     }
 
     vote_rdr.Reader::getThreadHndl()->join();
