@@ -61,7 +61,7 @@ namespace MODULE
     int numberOfTrackers(void) {return this->number_of_trackers;}
     
   private:
-    uint8_t my_ordinal; // ordinals are 1,2,3
+    int my_ordinal; // ordinals are 1,2,3
     int number_of_trackers {1};
     rti::core::Guid my_p_guid;
     rti::core::Guid ff_guid;

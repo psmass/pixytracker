@@ -93,6 +93,9 @@ namespace MODULE
 	    temp_guid = this->ordered_array_p_guids[i];
 	    this->ordered_array_p_guids[i] = this->ordered_array_p_guids[i+1];
 	    this->ordered_array_p_guids[i+1] = temp_guid;
+	    // now adjust the ordinal if the moved tracker is mine/self
+	    if (temp_guid == this->my_p_guid) 
+	      this->my_ordinal = i+1;
 	  }
 	}
       }
