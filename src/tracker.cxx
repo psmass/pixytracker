@@ -59,10 +59,38 @@ void run_tracker_application(unsigned int tracked_channel) {
 
 
     while (!application::shutdown_requested) {
-        // topic threads are running receiving data and writing servo control
-        // look for three-way voting (perhaps control LEDs here)
-        std::cout << "." << std::flush;                 
-        rti::util::sleep(dds::core::Duration(1));
+      //
+      // This block describes a state machine implemented int the main thread
+      // (here below) that will have the following states:
+      // INITIALIZE, VOTE, STEADY_STATE, SHUT_DOWN 
+      //
+      // The state machine will INITIALIZE to wait 10 sec for 3 trackers or
+      // 3 trackers which ever comes first and then proceed to VOTE state.
+      //
+      // In the VOTE State, voting should occur as follows:
+      // (1) An operating system should not cause a primary or secondary change
+      // this means that Late Joiners (i.e. they receive a durable Vote topic
+      // while in the initialize phase should vote first for any current PRIMARY
+      // and SECONDARY unit placeing themselve in as the next available
+      // secondary or tertiary unit.
+      // (2) If they are not a late joiner as per above, they must then vote
+      // based on ordinal (lowest to highest). Any unit receiving two votes
+      // for PRIMARY, SECONDARY, or TERTIARY must take that role, adjusting
+      // the servo_control topic strength accordingly. Once a vote has been
+      // writen, the SM will transition to STEADY_STATE
+      //
+      // In the STEADY_STATE the SM will maintain the LEDS / print out to
+      // reflect it's roll (PRIMARY, SECONDARY, TERITARY), and Ordinal(1,2,3).
+      // NOTE: Roll and Ordinal are not the same.
+      // It will also reflect the all trackers GUIDs rolls, and ordinals and
+      // report any failed or missing trackers.
+      // From STEADY_STATE a unit can reenter the VOTE state upon change of
+      // detected trackers (i.e. loss of heartbeat or new tracker heartbeat),
+      // or it may SHUT_DOWN if directed.
+      //
+      
+      std::cout << "." << std::flush;                 
+      rti::util::sleep(dds::core::Duration(1));
     }
 
     vote_rdr.Reader::getThreadHndl()->join();

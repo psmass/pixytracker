@@ -46,9 +46,14 @@ namespace MODULE
     allow the main program to set data and write at will.
 
 */
-  struct guidVotes {
+  
+  enum State {FAILED, OPERATIONAL};
+  enum Roll {PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
+  struct TrackerState {
     rti::core::Guid guid;
-    int votes;
+    int votes {0};
+    enum State state {FAILED};
+    Roll roll {UNASSIGNED};
   }; 
 
   class RedundancyInfo {  
@@ -60,18 +65,18 @@ namespace MODULE
     RedundancyInfo(const dds::domain::DomainParticipant participant);
     ~RedundancyInfo(void){}
 
-    rti::core::Guid getMyGuid() {return this->my_p_guid;}
+    rti::core::Guid getMyGuid() {
+      return this->ordered_array_p_guids[this->my_ordinal-1].guid;}
+    
     void sortSaveHbGuid(rti::core::Guid hb_guid);
     int numberOfTrackers(void) {return this->number_of_trackers;}
     
   private:
-    int my_ordinal; // ordinals of trackers are 1,2,3
+    int my_ordinal {1}; // ordinals of trackers are 1,2,3
     int number_of_trackers {1};
-    rti::core::Guid my_p_guid;
     rti::core::Guid ff_guid; // null guid
-    rti::core::Guid ordered_array_p_guids[3];
     rti::core::Guid primary, secondary, tertiary;
-    guidVotes ordered_array_p_guid_votes[3];
+    TrackerState ordered_array_p_guids[3];
   };
     
   class ServoWtr : public Writer {
