@@ -56,11 +56,15 @@ namespace MODULE
     RedundancyInfo(const dds::domain::DomainParticipant participant);
     ~RedundancyInfo(void){}
 
-    rti::core::Guid get_my_guid() {return this->my_p_guid;}
+    rti::core::Guid getMyGuid() {return this->my_p_guid;}
+    void sortSaveHbGuid(rti::core::Guid hb_guid);
+    int numberOfTrackers(void) {return this->number_of_trackers;}
     
   private:
-    uint8_t my_ordinal {0}; // ordinals are 1,2,3 - 0 will indicate not decided
-    rti::core::Guid  my_p_guid;
+    uint8_t my_ordinal; // ordinals are 1,2,3
+    int number_of_trackers {1};
+    rti::core::Guid my_p_guid;
+    rti::core::Guid ff_guid;
     rti::core::Guid ordered_array_p_guids[3];
   };
     
@@ -115,6 +119,9 @@ namespace MODULE
     // write() is effectively a runtime down cast for periodic data
     void write();
   
+  private:
+    RedundancyInfo* my_redundancy_info_obj;
+    
     
   };
 
@@ -129,6 +136,9 @@ namespace MODULE
 
     void handler(dds::core::xtypes::DynamicData& data);
 
+    private:
+    RedundancyInfo* my_redundancy_info_obj;
+    
   };
 
   class VoteWtr : public Writer {
@@ -144,6 +154,10 @@ namespace MODULE
     // write() is effectively a runtime down cast for periodic data
     void write() {};
 
+    private:
+    RedundancyInfo* my_redundancy_info_obj;
+    
+
   };
 
   class VoteRdr : public Reader {
@@ -155,6 +169,10 @@ namespace MODULE
     ~VoteRdr(void) {};
 
     void handler(dds::core::xtypes::DynamicData& data);    
+
+    private:
+    RedundancyInfo* my_redundancy_info_obj;
+    
 
   };
 } // namespace MODULE

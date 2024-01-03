@@ -55,9 +55,54 @@ namespace MODULE
 
     this->my_p_guid  = convertToGuid(handle);
     std::cout << "GUID Convert: " << my_p_guid << std::endl;
-    
+
+    // initialize guid tracking array to my_guid followed by 0's
+    uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
+    rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
+    this->ordered_array_p_guids[0]=my_p_guid;
+    this->ordered_array_p_guids[1]=ff_guid;
+    this->ordered_array_p_guids[2]=ff_guid;
+
+    my_ordinal = 1; // initially 1, changes when we receive durable vote or heartbeats
+
   }
-  
+
+  void RedundancyInfo::sortSaveHbGuid(rti::core::Guid hb_guid)
+  {
+    // first make sure we don't already have this tracker
+    bool dup_guid {false};
+    for (int i=0; i<3; i++) {
+      if (this->ordered_array_p_guids[i]==hb_guid){
+	dup_guid = true;
+	break;
+      }
+    }
+
+    if (!dup_guid) {
+      // This routine is only called if we have << 3 trackers
+      // place on the end of the zero-based array and bubble sort
+      this->ordered_array_p_guids[this->number_of_trackers] = hb_guid;
+      this->number_of_trackers++; // at least two now
+
+      rti::core::Guid temp_guid;
+      for (int l=0; l<this->number_of_trackers-1; l++) {
+	
+	for (int i=0; i<this->number_of_trackers-1; i++) {
+	  if (this->ordered_array_p_guids[i] > this->ordered_array_p_guids[i+1]) {
+	    // swap them
+	    temp_guid = this->ordered_array_p_guids[i];
+	    this->ordered_array_p_guids[i] = this->ordered_array_p_guids[i+1];
+	    this->ordered_array_p_guids[i+1] = temp_guid;
+	  }
+	}
+      }
+      std::cout << "DISCOVERED SORTED TRACKERS " << std::endl;
+      for (int i=0; i<3; i++) 
+	std::cout << this->ordered_array_p_guids[i] << std::endl;
+			      
+    } // if dup
+  }
+    
   ServoWtr::ServoWtr(
 	const dds::domain::DomainParticipant participant,
         bool periodic,	
@@ -105,16 +150,17 @@ namespace MODULE
 			     const dds::domain::DomainParticipant participant,
 			     RedundancyInfo redundancy_info_obj,
 			     bool periodic,
-			     dds::core::Duration period)
+			     dds::core::Duration period) 
     : Writer(participant, "TrackerHeartbeat", \
 	     "publisher::tracker_hb_topic_writer",\
 	     periodic, period) {
 
-    uint8_t iarr[16];
-    //convertInstanceHandleToIArray(iarr, participant->instance_handle());
-    convertGuidToIArray(iarr, redundancy_info_obj.get_my_guid());
+    this->my_redundancy_info_obj = &redundancy_info_obj;
 
-    
+    // get my guid and place it in the heartbeat sample
+    uint8_t iarr[16];
+    convertGuidToIArray(iarr, redundancy_info_obj.getMyGuid());
+
     std::vector<uint8_t> seq_values;
     for (int i=0; i<16; i++)
       seq_values.push_back(iarr[i]);
@@ -133,22 +179,30 @@ namespace MODULE
   HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant,
 			     RedundancyInfo redundancy_info_obj)
     : Reader(participant, "TrackerHeartbeat", "subscriber::tracker_hb_topic_reader")
-    {
+  {
+    this->my_redundancy_info_obj = &redundancy_info_obj;
   };
 
   void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data) {
-    std::vector<uint8_t> seq_values = data.get_values<uint8_t>("MyParticipantHandle");
+    //std::cout << "Received Heartbeat: GUID=";
 
-    std::cout << "Received Heartbeat: GUID=";
+    // we only assess a guid from a heartbeat if we have available tracker space
+    if (this->my_redundancy_info_obj->numberOfTrackers() < 3) {
+      
+      std::vector<uint8_t> seq_values = data.get_values<uint8_t>("MyParticipantHandle");
     
-    uint8_t iarr[16];
-    for (int i=15; i>=0; i--) {
-      iarr[i]=seq_values.back();
-      seq_values.pop_back();
-    }
+      uint8_t iarr[16];
+      for (int i=15; i>=0; i--) {
+	iarr[i]=seq_values.back();
+	seq_values.pop_back();
+      }
 
-    rti::core::Guid hbGuid= convertIArrayToGuid(iarr);
-    std::cout << hbGuid << std::endl;
+      rti::core::Guid hbGuid= convertIArrayToGuid(iarr);
+      this->my_redundancy_info_obj->sortSaveHbGuid(hbGuid);    
+    
+      //std::cout << hbGuid << std::endl;
+    }
+	
 
     /*
     // Test Guid Math operators - seems to work fine
@@ -174,12 +228,14 @@ namespace MODULE
 	     "publisher::vote_topic_writer",\
 	     periodic, period)
   {
+     this->my_redundancy_info_obj = &redundancy_info_obj;
   }
 
   VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant,
 		   RedundancyInfo redundancy_info_obj)
     : Reader(participant, "VoteType", "subscriber::vote_topic_reader")
   {
+    this->my_redundancy_info_obj = &redundancy_info_obj;    
   }
 
   void VoteRdr::handler(dds::core::xtypes::DynamicData& data)
