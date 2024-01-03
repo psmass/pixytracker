@@ -32,6 +32,7 @@
         <member name="MyParticipantHandle" type="uint8" sequenceMaxLength="16" key="true"/>
       </struct>
       <struct name="VoteType" extensibility="appendable">
+        <member name="SourceParticipantHandle" type="uint8" sequenceMaxLength="16" key="true"/>
         <member name="Primary" type="uint8" sequenceMaxLength="16"/>
         <member name="Secondary" type="uint8" sequenceMaxLength="16"/>
         <member name="Tertiary" type="uint8" sequenceMaxLength="16"/>

@@ -115,7 +115,9 @@ namespace MODULE
     // first is there already a primary and secondary? Existing rolls
     // take presidence over votes
     // note: if we were a new controller, we sat in the INITIALIZE to get heartbeats
-    // form other controllers or 10 sec. 
+    // form other controllers or 10 sec. We also would have populated the Redundancy
+    // state object from durable vote topics if the system had be operational (i.e.
+    // other Trackers had voted previously and were either primary or secondary.
 
     bool was_operational{false}, is_primary {false}, is_secondary{false}, is_tertiary{false};
     
@@ -283,21 +285,7 @@ namespace MODULE
     
       //std::cout << hbGuid << std::endl;
     }
-	
-
-    /*
-    // Test Guid Math operators - seems to work fine
-    const uint8_t i[16] {7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4};
-    std::cout << "String: " << i << std::endl;
-    rti::core::Guid myMadeupGuid = convertIArrayToGuid(i);
-    std::cout << "TestGuid: " << myMadeupGuid << std::endl;
-
-    if (myMadeupGuid > hbGuid)
-      std::cout << "Madeup Guid is larger" << std::endl;
-    else
-      std::cout << "myGuid is larger" << std::endl;
-    */
-    
+	   
   };
 
 
@@ -310,19 +298,62 @@ namespace MODULE
 	     periodic, period)
   {
      this->my_redundancy_info_obj = redundancy_info_obj;
+     this->setSampleField("SourceParticipantHandle", redundancy_info_obj->getMyGuid());
+  };
+
+  void VoteWtr::writeVote(void)
+  {
+    TrackerState tracker_state; 
+    uint8_t iarr[16]; 
+
+    for (int i=0; i < this->my_redundancy_info_obj->numberOfTrackers(); i++) {
+      tracker_state=this->my_redundancy_info_obj->getTrackerState(i);
+      switch (tracker_state.roll) {
+      case PRIMARY:
+	this->setSampleField("Primary", tracker_state.guid);
+	break;
+      case SECONDARY:
+	this->setSampleField("Secondary", tracker_state.guid);
+	break;
+      case TERTIARY:
+	this->setSampleField("Tertiary", tracker_state.guid);
+	break;
+      case UNASSIGNED:
+	break;
+      default:
+	std::cerr << "writing Vote default assert()" << std::endl;
+      }
+    } // for
+    this->topicWriter.write(*this->getMyDataSample());
   }
+
+
+  void  VoteWtr::setSampleField (std::string topic_field, rti::core::Guid guid) {
+    // get my guid and place it in the heartbeat sample
+    uint8_t iarr[16];
+    convertGuidToIArray(iarr, guid);
+
+    std::vector<uint8_t> seq_values;
+    for (int i=0; i<16; i++)
+      seq_values.push_back(iarr[i]);
+
+    this->getMyDataSample()->set_values(topic_field, seq_values);
+
+  };  
+
+  
 
   VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant,
 		   RedundancyInfo* redundancy_info_obj)
     : Reader(participant, "VoteType", "subscriber::vote_topic_reader")
   {
     this->my_redundancy_info_obj = redundancy_info_obj;    
-  }
+  };
 
   void VoteRdr::handler(dds::core::xtypes::DynamicData& data)
   {
     std::cout << "Received Vote" << std::endl;
-  }
+  };
     
 } // namespace MODULE
 

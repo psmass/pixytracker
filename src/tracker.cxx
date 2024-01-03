@@ -106,6 +106,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// this state tranitions quickly once we vote
 	std::cout << "\n STATE: VOTING" << std::endl;
 	redundancy_info.assessVote(); // place my vote for Primary/Sec/Tertiary
+	vote_wtr.writeVote();
 	state=STEADY_STATE;
 	break;
 	

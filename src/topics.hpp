@@ -70,6 +70,7 @@ namespace MODULE
     
     void sortSaveHbGuid(rti::core::Guid hb_guid);
     int numberOfTrackers(void) {return this->number_of_trackers;}
+    TrackerState getTrackerState(int i) {return ordered_array_p_guids[i];};
     void assessVote(void);
     
   private:
@@ -166,7 +167,10 @@ namespace MODULE
     // write() is effectively a runtime down cast for periodic data
     void write() {};
 
+    void writeVote(void);
+
     private:
+    void setSampleField(std::string topic_field, rti::core::Guid guid);
     RedundancyInfo* my_redundancy_info_obj;
     
 
