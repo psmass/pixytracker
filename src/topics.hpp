@@ -51,7 +51,8 @@ namespace MODULE
   enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
   struct TrackerState {
     rti::core::Guid guid;
-    int votes {0};
+    bool Ivoted {false}; // track if this tracker vote has been processed already
+    int votes[3] {0, 0, 0}; // votes for tracker w/Guid {Primary, Secondary, Tertiary}
     enum State state {FAILED};
     Roll roll {UNASSIGNED};
   }; 
@@ -65,20 +66,26 @@ namespace MODULE
     RedundancyInfo(const dds::domain::DomainParticipant participant);
     ~RedundancyInfo(void){}
 
+    int getMyOrdinal(void) {return this->my_ordinal;};
     rti::core::Guid getMyGuid() {
-      return this->ordered_array_p_guids[this->my_ordinal-1].guid;}
+      return this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->guid;}
     
     void sortSaveHbGuid(rti::core::Guid hb_guid);
     int numberOfTrackers(void) {return this->number_of_trackers;}
-    TrackerState getTrackerState(int i) {return ordered_array_p_guids[i];};
-    void assessVote(void);
+    TrackerState* getTrackerState_ptr(int i) {return ordered_array_tracker_state_ptrs[i];};
+
+    void clearIvoted(void) {
+      for (int i=0; i<this->number_of_trackers; i++)
+	this->array_tracker_states[i].Ivoted = false;
+    };
     
   private:
-    int my_ordinal {1}; // ordinals of trackers are 1,2,3
+    int my_ordinal {1}; // ordinals of trackers are 1,2,3 and index the ordered * array
     int number_of_trackers {1};
     rti::core::Guid ff_guid; // null guid
     rti::core::Guid primary, secondary, tertiary;
-    TrackerState ordered_array_p_guids[3];
+    TrackerState array_tracker_states[3];
+    TrackerState* ordered_array_tracker_state_ptrs[3];
   };
     
   class ServoWtr : public Writer {
@@ -163,11 +170,13 @@ namespace MODULE
 	    dds::core::Duration period=std::chrono::seconds(4));
 
     ~VoteWtr(void) {};
+
+    // runs voting algorithm and writes vote
+    void vote(void);
+
     
     // write() is effectively a runtime down cast for periodic data
     void write() {};
-
-    void writeVote(void);
 
     private:
     void setSampleField(std::string topic_field, rti::core::Guid guid);

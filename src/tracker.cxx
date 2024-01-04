@@ -27,7 +27,7 @@ namespace MODULE
   #define PERIODIC true
   dds::core::Duration DEFAULT_PERIOD {1,0}; // 1 second default writer rate
 
-  enum SM_States {INITIALIZE, VOTE, STEADY_STATE, SHUT_DOWN, ERROR};
+  enum SM_States {INITIALIZE, VOTE, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
   
 void run_tracker_application(unsigned int tracked_channel) {
    // Create the participant
@@ -98,15 +98,21 @@ void run_tracker_application(unsigned int tracked_channel) {
       case INITIALIZE:
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
 	std::cout << "i." << redundancy_info.numberOfTrackers() << std::flush;
-	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==10)
+	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==100)
 	  state=VOTE;
 	break;
 	
       case VOTE:
 	// this state tranitions quickly once we vote
-	std::cout << "\n STATE: VOTING" << std::endl;
-	redundancy_info.assessVote(); // place my vote for Primary/Sec/Tertiary
-	vote_wtr.writeVote();
+	std::cout << "\nSTATE: VOTING" << std::endl;
+	redundancy_info.clearIvoted(); // allow everyone to vote
+	vote_wtr.vote(); // place my vote for Primary/Sec/Tertiary
+	state=VOTE_RESULTS;
+	break;
+
+      case VOTE_RESULTS: // wait one tick for Vote Results
+	std::cout << "\nSTATE: ASSESSING VOTING RESULTS" << std::endl;
+	// ignore any second votes from same controller (error)
 	state=STEADY_STATE;
 	break;
 	
@@ -125,7 +131,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	;
       } // switch
       
-      rti::util::sleep(dds::core::Duration(1));
+      rti::util::sleep(dds::core::Duration(0,100000000));
       ten_sec_cnt++;
     }
 

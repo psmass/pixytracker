@@ -53,16 +53,19 @@ namespace MODULE
     const dds::core::InstanceHandle handle=participant->instance_handle();
     // std::cout << "INSTANCE HANDLE: " << handle << std::endl;
 
-    this->ordered_array_p_guids[0].guid  = convertToGuid(handle);
-    std::cout << "GUID Convert: " << this->ordered_array_p_guids[0].guid  << std::endl;
+    this->array_tracker_states[0].guid  = convertToGuid(handle);
+    std::cout << "GUID Convert: " << this->array_tracker_states[0].guid  << std::endl;
 
     // initialize guid tracking array to my_guid followed by 0's
     uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
     rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
-    this->ordered_array_p_guids[0].votes=1; // vote for myself
-    this->ordered_array_p_guids[0].state=OPERATIONAL; // vote for myself    
-    this->ordered_array_p_guids[1].guid=ff_guid;
-    this->ordered_array_p_guids[2].guid=ff_guid;
+    this->array_tracker_states[0].state=OPERATIONAL; // set myself operational   
+    this->array_tracker_states[1].guid=ff_guid;
+    this->array_tracker_states[2].guid=ff_guid;
+
+    // initialize the ordered array of tracker ptrs
+    for (int i=0; i<3; i++)
+      ordered_array_tracker_state_ptrs[i]=&array_tracker_states[i];
 
   }
 
@@ -72,119 +75,42 @@ namespace MODULE
     // first make sure we don't already have this tracker
     bool dup_guid {false};
     for (int i=0; i<3; i++) {
-      if (this->ordered_array_p_guids[i].guid==hb_guid){
+      if (this->array_tracker_states[i].guid==hb_guid){
 	dup_guid = true;
 	break;
       }
     }
 
     if (!dup_guid) {
-      // This routine is only called if we have << 3 trackers
-      // place on the end of the zero-based array and bubble sort
-      this->ordered_array_p_guids[this->number_of_trackers].guid = hb_guid;
+      // This routine is only called if we have < 3 trackers
+      // place on the end of the zero-based array and bubble sort the pointers
+      this->array_tracker_states[this->number_of_trackers].guid = hb_guid;
       this->number_of_trackers++; // at least two now
 
-      rti::core::Guid temp_guid;
+      TrackerState* temp_tracker_state_ptr;
       for (int l=0; l<this->number_of_trackers-1; l++) {
 	
 	for (int i=0; i<this->number_of_trackers-1; i++) {
-	  if (this->ordered_array_p_guids[i].guid >
-	      this->ordered_array_p_guids[i+1].guid) {
-	    // swap them
-	    temp_guid = this->ordered_array_p_guids[i].guid;
-	    this->ordered_array_p_guids[i].guid = \
-	      this->ordered_array_p_guids[i+1].guid;
-	    this->ordered_array_p_guids[i+1].guid = temp_guid;
-	    // now adjust the ordinal if the moved tracker is mine/self
-	    if (temp_guid == this->ordered_array_p_guids[this->my_ordinal].guid) 
-	      this->my_ordinal = i+1;
+	  if (this->ordered_array_tracker_state_ptrs[i]->guid >
+	      this->ordered_array_tracker_state_ptrs[i+1]->guid) {
+	    // we are going to swap the pointers to order the pointer array
+	    temp_tracker_state_ptr = this->ordered_array_tracker_state_ptrs[i];
+	    if (i == this->my_ordinal-1) { // we are about to bubble ourselves, adjust ordinal
+	      this->my_ordinal = i+2;  // remember ordinals are 1 based
+	    }
+	    this->ordered_array_tracker_state_ptrs[i] = \
+	      this->ordered_array_tracker_state_ptrs[i+1];
+	    this->ordered_array_tracker_state_ptrs[i+1] = temp_tracker_state_ptr;
 	  }
 	}
       }
       std::cout << "DISCOVERED SORTED TRACKERS " << std::endl;
       for (int i=0; i<3; i++) 
-	std::cout << this->ordered_array_p_guids[i].guid
+	std::cout << this->ordered_array_tracker_state_ptrs[i]->guid
 		  << std::endl;
 			      
     } // if dup
   }
-
-  void RedundancyInfo::assessVote() {
-    enum Roll roll_array[3]{PRIMARY, SECONDARY, TERTIARY};
-
-    // first is there already a primary and secondary? Existing rolls
-    // take presidence over votes
-    // note: if we were a new controller, we sat in the INITIALIZE to get heartbeats
-    // form other controllers or 10 sec. We also would have populated the Redundancy
-    // state object from durable vote topics if the system had be operational (i.e.
-    // other Trackers had voted previously and were either primary or secondary.
-
-    bool was_operational{false}, is_primary {false}, is_secondary{false}, is_tertiary{false};
-    
-    for (int i=0; i<3; i++){
-      switch(this->ordered_array_p_guids[i].roll) {
-      case UNASSIGNED:
-	break;
-      case PRIMARY:
-	was_operational = true;
-	is_primary = true;
-	break;
-      case SECONDARY:
-	was_operational = true;
-	is_secondary = true;
-	break;
-      case TERTIARY:
-	was_operational = true;	
-	is_tertiary = true;
-	break;
-      default:
-	std::cerr << "switch assessVote error and abort" << std::endl;
-      }
-    }
-
-    // see if the system was operational (the only way we know this is
-    // that at least one controller (primary or secondary) sent the
-    // durable vote topic. 
-    // if tertiary was running things that's a double fault.
-    //
-    // Promote everyone if secondary is running the show.
-    if (was_operational) {
-      if (!is_primary) {
-	for (int i=0; i<3; i++) {
-	  switch(this->ordered_array_p_guids[i].roll) {
-	  case UNASSIGNED:
-	    break;
-	  case PRIMARY:
-	    std::cerr << "assessVote Primary when already no primary" << std::endl;
-	    break;
-	  case SECONDARY:
-	    this->ordered_array_p_guids[i].roll=PRIMARY;
-	    break;
-	  case TERTIARY:
-	    this->ordered_array_p_guids[i].roll=SECONDARY;
-	    break;
-	  default:
-	    std::cerr << "switch assessVote error and abort" << std::endl;
-	  }
-	}
-      } // if no primary
-      // was a primary (or is now) so now bring this tracker in as
-      // secondary or teritary - ordinals are 1 based
-      if (!is_secondary) 
-	this->ordered_array_p_guids[this->my_ordinal-1].roll=SECONDARY;
-      else
-	this->ordered_array_p_guids[this->my_ordinal-1].roll=TERTIARY;
-    } else { // system is coming up new, so ordinal voting.
-      for (int i=0; i<this->number_of_trackers; i++)
-	this->ordered_array_p_guids[i].roll=roll_array[i];
-    }
-    std::cout << "THE VOTE ASSESSMENT: " << std::endl;
-    for (int i=0; i<3; i++)
-      std::cout << this->ordered_array_p_guids[i].guid
-		<< " Roll #: " << this->ordered_array_p_guids[i].roll
-		<< std::endl;
-    
-  } // end Redundacy::assessVote
     
   ServoWtr::ServoWtr(
 	const dds::domain::DomainParticipant participant,
@@ -301,35 +227,9 @@ namespace MODULE
      this->setSampleField("SourceParticipantHandle", redundancy_info_obj->getMyGuid());
   };
 
-  void VoteWtr::writeVote(void)
-  {
-    TrackerState tracker_state; 
-    uint8_t iarr[16]; 
-
-    for (int i=0; i < this->my_redundancy_info_obj->numberOfTrackers(); i++) {
-      tracker_state=this->my_redundancy_info_obj->getTrackerState(i);
-      switch (tracker_state.roll) {
-      case PRIMARY:
-	this->setSampleField("Primary", tracker_state.guid);
-	break;
-      case SECONDARY:
-	this->setSampleField("Secondary", tracker_state.guid);
-	break;
-      case TERTIARY:
-	this->setSampleField("Tertiary", tracker_state.guid);
-	break;
-      case UNASSIGNED:
-	break;
-      default:
-	std::cerr << "writing Vote default assert()" << std::endl;
-      }
-    } // for
-    this->topicWriter.write(*this->getMyDataSample());
-  }
-
-
+  
   void  VoteWtr::setSampleField (std::string topic_field, rti::core::Guid guid) {
-    // get my guid and place it in the heartbeat sample
+    // Helper function to covert topic int array[16] Guids to rti::core:Guid
     uint8_t iarr[16];
     convertGuidToIArray(iarr, guid);
 
@@ -341,7 +241,134 @@ namespace MODULE
 
   };  
 
+
+  void VoteWtr::vote(){
+    // Array to Index map enum Roll
+    enum Roll roll_array[4]{PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
+    std::string roll_string_map[3] {"Primary", "Secondary", "Tertiary"};
+
+    // first is there already a primary and secondary? Existing rolls
+    // take presidence over votes
+    // note: if we were a new controller, we sat in the INITIALIZE to get heartbeats
+    // form other controllers or 10 sec. We also would have populated the Redundancy
+    // state object from durable vote topics if the system had be operational (i.e.
+    // other Trackers had voted previously and were either primary or secondary.
+
+    bool was_operational{false}, is_primary {false}, is_secondary{false}, is_tertiary{false};
+    int primary_idx, secondary_idx, tertiary_idx;
+    
+    for (int i=0; i<3; i++){
+      //std::cout << my_redundancy_info_obj->getTrackerState_ptr(i)->guid << " : "
+      //           << my_redundancy_info_obj->getTrackerState_ptr(i)->roll;
+      
+      switch(this->my_redundancy_info_obj->getTrackerState_ptr(i)->roll) {
+      case UNASSIGNED:
+	break;
+      case PRIMARY:
+	was_operational = true;
+	is_primary = true;
+	primary_idx = i;
+	break;
+      case SECONDARY:
+	was_operational = true;
+	is_secondary = true;
+	secondary_idx = i;
+	break;
+      case TERTIARY:
+	was_operational = true;	
+	is_tertiary = true;
+	tertiary_idx=1;
+	break;
+      default:
+	std::cerr << "switch assessVote error and abort" << std::endl;
+      }
+    } // for
+    // At this point, durable vote topics would have populated the trackerState
+    // object. Hense how we knew was_operational and if we have primary, secondary etc.
+    
+    if (was_operational) {
+      if (is_primary) {// and was a Primary so keep incumbant in office
+	this->setSampleField("Primary",
+			     my_redundancy_info_obj->getTrackerState_ptr(primary_idx)->guid);
+	if (is_secondary) { // and was secondary keep incumbant secondary
+	this->setSampleField("Secondary",
+			     my_redundancy_info_obj->getTrackerState_ptr(secondary_idx)->guid);
+	// and vote ourselves to Tertiary
+	this->setSampleField("Tertiary",
+			     my_redundancy_info_obj->			\
+			     getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal())->guid);
+	}
+			     			    
+      } else if (is_secondary) { // no primary, so secondary must be running the show
+	// vote to promote secondary
+	this->setSampleField("Primary",
+			     my_redundancy_info_obj->getTrackerState_ptr(secondary_idx)->guid);
+	if (is_tertiary) { // should be since single fault, must be primary failed.
+	  this->setSampleField("Secondary",
+			       my_redundancy_info_obj->getTrackerState_ptr(secondary_idx)->guid);
+	  // and vote ourselves to Tertiary
+	  this->setSampleField("Tertiary",\
+			       my_redundancy_info_obj-> \
+			       getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal())->guid);
+	}	  
+
+      } else if (is_tertiary) { // theoretically a double fault if teritary is running the show
+	this->setSampleField("Primary",\
+			     my_redundancy_info_obj->getTrackerState_ptr(tertiary_idx)->guid);
+	// and vote ourselves to Secondary
+	this->setSampleField("Secondary",\
+			     my_redundancy_info_obj-> \
+			     getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal())->guid);
+      }  else { // no one running the show, but we were running
+	std::cerr << " Voting ambiguity, System was operational but no rolls assigned "
+		  << std::endl;
+      }
+    } else { // was not operational, no rolls ever assigned
+      // vote by sorted guid, lowest {Primary} to higher 
+      for (int i=0; i<this->my_redundancy_info_obj->numberOfTrackers(); i++) {
+	this->setSampleField(roll_string_map[i], \
+			     my_redundancy_info_obj->getTrackerState_ptr(i)->guid);
+      }
+
+      // We've populated the Vote Topic with our Selections according to the voting algorithm.
+      // Now Read the topic back an register our vote
+      for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
+	
+	std::vector<uint8_t> seq_values_p = getMyDataSample()->get_values<uint8_t>(roll_string_map[i]);
+
+	uint8_t iarr[16];
+	for (int i=15; i>=0; i--) {
+	  iarr[i]=seq_values_p.back();
+	  seq_values_p.pop_back();
+	}
+
+	rti::core::Guid guid= convertIArrayToGuid(iarr);
+	
+        if (guid == my_redundancy_info_obj->getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->guid)
+	  {
+	    my_redundancy_info_obj->\
+	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->roll=roll_array[i];
+	    my_redundancy_info_obj->\
+	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->votes[i]=1;
+
+	    std::cout << " I Registered votes for myself: "
+		      <<  my_redundancy_info_obj->getTrackerState_ptr \
+	                          (my_redundancy_info_obj->getMyOrdinal()-1)->guid
+		      << " Index: " << i
+		      << " Roll: " << roll_string_map[i]
+		      << " Vote: " <<  my_redundancy_info_obj-> \
+	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->votes[i] << std::endl;
+
+	  }
+      }
   
+    }
+ 
+    // cast our vote - write the vote sample
+    this->topicWriter.write(*this->getMyDataSample());
+  
+  }
+
 
   VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant,
 		   RedundancyInfo* redundancy_info_obj)
@@ -353,6 +380,9 @@ namespace MODULE
   void VoteRdr::handler(dds::core::xtypes::DynamicData& data)
   {
     std::cout << "Received Vote" << std::endl;
+    // ensure only one vote per tracker, check and set boo Ivoted.
+    std::vector<uint8_t> seq_values_p = data.get_values<uint8_t>("SourceParticipantHandle");
+    
   };
     
 } // namespace MODULE
