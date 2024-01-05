@@ -100,6 +100,21 @@
           </ownership_strength>
         </datawriter_qos>
       </qos_profile>
+      <qos_profile name="Durable">
+        <datareader_qos>
+          <durability>
+            <kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+          </durability>
+          <reliability>
+            <kind>RELIABLE_RELIABILITY_QOS</kind>
+          </reliability>
+        </datareader_qos>
+        <datawriter_qos>
+          <durability>
+            <kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+          </durability>
+        </datawriter_qos>
+      </qos_profile>
     </qos_library>
 
     <domain_library name="PixyShapesDomain_Library">
@@ -124,10 +139,7 @@
           </data_writer>
           <data_writer name="tracker_hb_topic_writer" topic_ref="tracker_heartbeat"/>
           <data_writer name="vote_topic_writer" topic_ref="vote">
-            <datawriter_qos>
-              <durability>
-                <kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
-              </durability>
+            <datawriter_qos base_name="PixyTrackerQOS_Library::Durable">
             </datawriter_qos>
           </data_writer>
         </publisher>
@@ -142,10 +154,7 @@
           </data_reader>
           <data_reader name="tracker_hb_topic_reader" topic_ref="tracker_heartbeat"/>
           <data_reader name="vote_topic_reader" topic_ref="vote">
-            <datareader_qos>
-              <durability>
-                <kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
-              </durability>
+            <datareader_qos base_name="PixyTrackerQOS_Library::Durable">
             </datareader_qos>
           </data_reader>
         </subscriber>
