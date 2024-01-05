@@ -66,7 +66,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       //
       // This block describes a state machine implemented int the main thread
       // (here below) that will have the following states:
-      // INITIALIZE, VOTE, STEADY_STATE, SHUT_DOWN 
+      // INITIALIZE, VOTE, WAIT_FOR_VOTES, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN 
       //
       // The state machine will INITIALIZE to wait 10 sec for 3 trackers or
       // 3 trackers which ever comes first and then proceed to VOTE state.
@@ -123,15 +123,20 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 
       case WAIT_VOTES_IN:
+	std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
 	// wait for all votes to be in, if < 3 the timing is dependent
 	// upon delays from different trackers starting.
         if (redundancy_info.votesIn() == redundancy_info.numberOfTrackers()) 
 	  state=VOTE_RESULTS;
 	break;
 
-      case VOTE_RESULTS: // wait one tick to ensure Vote are in and counted
+      case VOTE_RESULTS: 
 	std::cout << "\nSTATE: ASSESSING VOTING RESULTS" << std::endl;
-	redundancy_info.printVoteResults();
+	// Assess if all trackers are consistent - fault any missing
+	// or inconsistent trackers. Set Pixy_Servo_Strength based on
+	// results: PRIMARY 30, SECONDARY 20, TERTIARY 10
+	redundancy_info.assessVoteResults();
+	//redundancy_info.printVoteResults();
 	state=STEADY_STATE;
 	break;
 	

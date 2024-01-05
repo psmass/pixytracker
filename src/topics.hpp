@@ -53,7 +53,7 @@ namespace MODULE
     rti::core::Guid guid;
     bool Ivoted {false}; // track if this tracker vote has been processed already
     int votes[3] {0, 0, 0}; // votes for tracker w/Guid {Primary, Secondary, Tertiary}
-    enum State state {FAILED};
+    enum State state[3] {FAILED, FAILED, FAILED};
     Roll roll {UNASSIGNED};
   }; 
 
@@ -73,6 +73,7 @@ namespace MODULE
     void sortSaveHbGuid(rti::core::Guid hb_guid);
     int numberOfTrackers(void) {return this->number_of_trackers;}
     void incVotesIn(void) {this->number_of_votes_in++;}
+    void assessVoteResults(void);
     int votesIn(void) {return this->number_of_votes_in;}
     TrackerState* getTrackerState_ptr(int i) {return ordered_array_tracker_state_ptrs[i];};
 

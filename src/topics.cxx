@@ -67,7 +67,7 @@ namespace MODULE
     // initialize guid tracking array to my_guid followed by 0's
     uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
     rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
-    this->array_tracker_states[0].state=OPERATIONAL; // set myself operational   
+    this->array_tracker_states[0].state[0]=OPERATIONAL; // set myself operational   
     this->array_tracker_states[1].guid=ff_guid;
     this->array_tracker_states[2].guid=ff_guid;
 
@@ -120,7 +120,46 @@ namespace MODULE
       */		      
     } // if dup
   }
-    
+  
+  void RedundancyInfo::assessVoteResults(void)
+  {
+    std::cout << "My Tracker Guid: "
+	      << this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->guid
+	      << " My Ordinal: " << this->my_ordinal
+	      << std::endl;
+
+    // Each tracker should show votes for one roll = number of trackers and
+    // the rest 0. NOTE: while initially tracker order and rolls are correlated
+    // (i.e. Primary is ordinal 1, Secondary ordinal 2, Tertiary 3, over time
+    // this can change.
+    // Go through the ordered array of trackers and validate winner for
+    // their roll and consistency. If inconsistent index of non-zero looser
+    // index is the faulty tracker.
+
+    /*
+    int largest_roll_vote_indx {0}, largest_roll_vote_tally {0};  
+    for (int ord=0; ord<this->number_of_trackers; ord++) {
+      // check one vote = number_of_trackers and all others are 0
+      // For a single fault in a tripple redundant system, one roll_vote
+      // might be 2 while one of the others is 1. Vote of 1,1,1 would
+      // be a double fault. Possible combos are (3,0,0) (0,3,0), (0,0,3),
+      // Faulted or missing unit - (2,0,0), (0,2,0), (0,0,2), or
+      // Simplex (1,0,0), (0,1,0), (0,0,1).
+      // Inconsistent state would be: (2,1,0), (2,0,1), (
+      //
+      for (int roll=0; roll<this->number_of_trackers; roll++) {
+	roll_vote=this->ordered_array_tracker_state_ptrs[ord].vote[roll]
+	if (roll_vote > largest_roll_vote_tally) { // track winner
+	    largest_roll_vote_tally = roll_vote;
+	    largest_roll_vote_index = i;
+	  if(roll_vote == 0)
+	    break;
+	  if (roll_vote == this->number_of_trackers
+	      this->number_of_trackers) {
+	  } else {
+    */	    
+  };
+     
   ServoWtr::ServoWtr(
 	const dds::domain::DomainParticipant participant,
         bool periodic,	
@@ -412,13 +451,14 @@ namespace MODULE
   {
     std::cout << "Received Vote" << std::endl;
 
-    rti::core::Guid guid;
+    rti::core::Guid this_guid, guid[3];
     bool tracker_voted {false};
+    
     // verify this tracker has not already voted (should be impossible)
-    guid = this->extractGuid(data, "SourceParticipantHandle");
+    this_guid = this->extractGuid(data, "SourceParticipantHandle");
     for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
-      if (guid == \
-	  my_redundancy_info_obj->getTrackerState_ptr(i)->guid	\
+      if (this_guid == \
+	  my_redundancy_info_obj->getTrackerState_ptr(i)->guid \
 	  && \
 	  my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted) {
 	tracker_voted = true;
@@ -427,19 +467,32 @@ namespace MODULE
     }
 
     if (!tracker_voted) {
-      my_redundancy_info_obj->incVotesIn();
+      // first check the vote is consistent - all guids are different
+      // for each roll.
+      for (int l=0; l<my_redundancy_info_obj->numberOfTrackers(); l++) {	
+	guid[l] = this->extractGuid(data, roll_string_map[l]);
+	if (l>1)
+	  for (int k=0; k<l; k++)
+	    if (guid[k]==guid[l])
+	      ; //goto bad_vote;
+       }
+			  
+      my_redundancy_info_obj->incVotesIn(); // mark this tracker as voted
       // go through and extact the vote Primary to Tertiary
-      for (int l=0; l<my_redundancy_info_obj->numberOfTrackers(); l++) {
-	guid = this->extractGuid(data, roll_string_map[l]);
+      for (int roll_idx=0; roll_idx<my_redundancy_info_obj->numberOfTrackers(); roll_idx++) {
         // see who's Guid we are getting a vote for?
 	for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
-	  if (guid ==							\
+	  if (guid[roll_idx] ==						\
 	      my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
 	    // increment the vote for tracker based on the roll we are checking
-	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[l]++;
+	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[roll_idx]++;
 	  }
-	} // for l;
+      } // for roll_idx;
     } // if tracker did not vote
+    return;
+    
+  bad_vote:
+    std::cerr << "Vote found inconsistent" << std::endl;
   };
     
 } // namespace MODULE
