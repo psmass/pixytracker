@@ -78,6 +78,19 @@ namespace MODULE
       for (int i=0; i<this->number_of_trackers; i++)
 	this->array_tracker_states[i].Ivoted = false;
     };
+
+    void printVoteResults() {
+      for (int i=0; i<this->numberOfTrackers(); i++)
+	std::cout << "\nFor Tracker: "
+		  << this->ordered_array_tracker_state_ptrs[i]->guid
+		  << "\nVotes for Primary: "
+		  << this->ordered_array_tracker_state_ptrs[i]->votes[0]
+		  << "\nVotes for Secondary: "
+		  << this->ordered_array_tracker_state_ptrs[i]->votes[1]
+		  << "\nVotes for Tertiary: "
+		  << this->ordered_array_tracker_state_ptrs[i]->votes[2]
+		  << std::endl;
+    };	  	  
     
   private:
     int my_ordinal {1}; // ordinals of trackers are 1,2,3 and index the ordered * array
@@ -178,7 +191,7 @@ namespace MODULE
     // write() is effectively a runtime down cast for periodic data
     void write() {};
 
-    private:
+  private:
     void setSampleField(std::string topic_field, rti::core::Guid guid);
     RedundancyInfo* my_redundancy_info_obj;
     
@@ -193,11 +206,11 @@ namespace MODULE
     
     ~VoteRdr(void) {};
 
-    void handler(dds::core::xtypes::DynamicData& data);    
+    void handler(dds::core::xtypes::DynamicData& data);
 
-    private:
-    RedundancyInfo* my_redundancy_info_obj;
-    
+  private:
+    rti::core::Guid extractGuid(dds::core::xtypes::DynamicData& sample, std::string topicField);        RedundancyInfo* my_redundancy_info_obj;
+
 
   };
 } // namespace MODULE

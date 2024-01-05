@@ -95,24 +95,36 @@ void run_tracker_application(unsigned int tracked_channel) {
 
       switch (state) {
 
+	
+	// Note:  The sleep in INITIALIZE ensures we wait at least 1 sec after
+	//        all the trackers, if all three trackers are up, and makes a one time
+	//        worst case 10sec startup.
+	//        The sleep in VOTE: ensures we allow all votes to be received prior
+	//        to processing the results, a delay of 1 second is not significant
+	//        since it's either at initialization (one time) or operationally,
+	//        if the primary had failed, the secondary is running things and this
+	//        simply promotes the secondary to primary.
       case INITIALIZE:
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
 	std::cout << "i." << redundancy_info.numberOfTrackers() << std::flush;
-	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==100)
+	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==90) {
+	  rti::util::sleep(dds::core::Duration(1)); // extra sec to register HBs
 	  state=VOTE;
+	};
 	break;
 	
       case VOTE:
 	// this state tranitions quickly once we vote
 	std::cout << "\nSTATE: VOTING" << std::endl;
-	redundancy_info.clearIvoted(); // allow everyone to vote
+	//redundancy_info.clearIvoted(); // allow everyone to vote
 	vote_wtr.vote(); // place my vote for Primary/Sec/Tertiary
+	rti::util::sleep(dds::core::Duration(1)); // extra sec to register all votes
 	state=VOTE_RESULTS;
 	break;
 
-      case VOTE_RESULTS: // wait one tick for Vote Results
+      case VOTE_RESULTS: // wait one tick to ensure Vote are in and counted
 	std::cout << "\nSTATE: ASSESSING VOTING RESULTS" << std::endl;
-	// ignore any second votes from same controller (error)
+	redundancy_info.printVoteResults();
 	state=STEADY_STATE;
 	break;
 	

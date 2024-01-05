@@ -19,6 +19,10 @@ namespace MODULE
 
   /* Helper functions to covert between InstanceHandles, GUIDs and arrays
    */
+
+  // Array to Index map enum Roll
+  enum Roll roll_array[4]{PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
+  std::string roll_string_map[3] {"Primary", "Secondary", "Tertiary"};
   
   // need to covert Instance Handles to Guids to use the math operators to compare values
   rti::core::Guid convertToGuid ( const dds::core::InstanceHandle& instanceHandle ) {
@@ -28,24 +32,28 @@ namespace MODULE
   }
 
   // test routine to create a Guid to try comparison operators
-  rti::core::Guid convertIArrayToGuid ( const uint8_t *array ) {
+  rti::core::Guid convertIArrayToGuid ( const uint8_t *array )
+  {
     rti::core::Guid guid;
     memcpy(&guid,array,16);
     return guid;
   }
 
   // routine to put Instance Handle in an array of 8 bit ints
-  void convertInstanceHandleToIArray (uint8_t *array, const dds::core::InstanceHandle& instanceHandle ) {
+  void convertInstanceHandleToIArray (uint8_t *array, const dds::core::InstanceHandle& instanceHandle )
+  {
     memcpy(array,reinterpret_cast<DDS_Octet const *>(&instanceHandle),16);
   }
 
   // routine to put Guid in an array of 8 bit ints
-  void convertGuidToIArray (uint8_t *array, rti::core::Guid guid ) {
+  void convertGuidToIArray (uint8_t *array, rti::core::Guid guid )
+  {
     memcpy(array,reinterpret_cast<DDS_Octet const *>(&guid),16);
   }
 
   
-  RedundancyInfo::RedundancyInfo(const dds::domain::DomainParticipant participant) {
+  RedundancyInfo::RedundancyInfo(const dds::domain::DomainParticipant participant)
+  {
     /* Get my participant Instance Handle and send it rather than Guids.
        We'll need to convert instance handles to GUIDS to use the math operators. 
        Note sure how to get Guid directly and can't do math on Instance handle.
@@ -104,11 +112,12 @@ namespace MODULE
 	  }
 	}
       }
+      /*
       std::cout << "DISCOVERED SORTED TRACKERS " << std::endl;
       for (int i=0; i<3; i++) 
 	std::cout << this->ordered_array_tracker_state_ptrs[i]->guid
 		  << std::endl;
-			      
+      */		      
     } // if dup
   }
     
@@ -116,14 +125,16 @@ namespace MODULE
 	const dds::domain::DomainParticipant participant,
         bool periodic,	
         dds::core::Duration period)
-    : Writer(participant, "ServoControl", "publisher::servo_topic_writer", periodic, period) {
+    : Writer(participant, "ServoControl", "publisher::servo_topic_writer", periodic, period)
+  {
         // Update Static Topic Data parameters in the beginning of the handler
         // prior to the loop, but after the entity base class creates the sample.
         // std::cout << "Servo Writer C'Tor" << std::endl;
     this->getMyDataSample()->value<uint16_t>("frequency", SERVO_FREQUENCY_HZ);
   };
 
-  void ServoWtr::writeData(int32_t x, int32_t y) {
+  void ServoWtr::writeData(int32_t x, int32_t y)
+  {
     gimbal.update_pan(x);
     gimbal.update_tilt(y);
     this->getMyDataSample()->value<uint16_t>("pan", gimbal.get_pan_position());
@@ -138,10 +149,9 @@ namespace MODULE
 
   
   ShapesRdr::ShapesRdr(const dds::domain::DomainParticipant participant,  ServoWtr* servoWriter)
-    : Reader(participant, "ShapeTypeExtended", "subscriber::shape_topic_reader") {
-    
+    : Reader(participant, "ShapeTypeExtended", "subscriber::shape_topic_reader")
+  {
     this->servo_writer = servoWriter;
-    
   };
 
   void ShapesRdr::handler(dds::core::xtypes::DynamicData& data) {
@@ -162,8 +172,8 @@ namespace MODULE
 			     dds::core::Duration period) 
     : Writer(participant, "TrackerHeartbeat", \
 	     "publisher::tracker_hb_topic_writer",\
-	     periodic, period) {
-
+	     periodic, period)
+  {
     this->my_redundancy_info_obj = redundancy_info_obj;
 
     // get my guid and place it in the heartbeat sample
@@ -175,12 +185,12 @@ namespace MODULE
       seq_values.push_back(iarr[i]);
     
     this->getMyDataSample()->set_values("MyParticipantHandle", seq_values);
- 
   }
   
     
   // write() is effectively a runtime down cast for periodic data
-  void HeartbeatWtr::write(void) {
+  void HeartbeatWtr::write(void)
+  {
     this->topicWriter.write(*this->getMyDataSample());
   };
   
@@ -192,7 +202,8 @@ namespace MODULE
     this->my_redundancy_info_obj = redundancy_info_obj;
   };
 
-  void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data) {
+  void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data)
+  {
     //std::cout << "Received Heartbeat: GUID=";
 
     // we only assess a guid from a heartbeat if we have available tracker space
@@ -228,7 +239,8 @@ namespace MODULE
   };
 
   
-  void  VoteWtr::setSampleField (std::string topic_field, rti::core::Guid guid) {
+  void  VoteWtr::setSampleField (std::string topic_field, rti::core::Guid guid)
+  {
     // Helper function to covert topic int array[16] Guids to rti::core:Guid
     uint8_t iarr[16];
     convertGuidToIArray(iarr, guid);
@@ -238,15 +250,11 @@ namespace MODULE
       seq_values.push_back(iarr[i]);
 
     this->getMyDataSample()->set_values(topic_field, seq_values);
-
   };  
 
 
-  void VoteWtr::vote(){
-    // Array to Index map enum Roll
-    enum Roll roll_array[4]{PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
-    std::string roll_string_map[3] {"Primary", "Secondary", "Tertiary"};
-
+  void VoteWtr::vote()
+  {
     // first is there already a primary and secondary? Existing rolls
     // take presidence over votes
     // note: if we were a new controller, we sat in the INITIALIZE to get heartbeats
@@ -332,9 +340,9 @@ namespace MODULE
 
       // We've populated the Vote Topic with our Selections according to the voting algorithm.
       // Now Read the topic back an register our vote
-      for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
+      for (int l=0; l<my_redundancy_info_obj->numberOfTrackers(); l++) {
 	
-	std::vector<uint8_t> seq_values_p = getMyDataSample()->get_values<uint8_t>(roll_string_map[i]);
+	std::vector<uint8_t> seq_values_p = getMyDataSample()->get_values<uint8_t>(roll_string_map[l]);
 
 	uint8_t iarr[16];
 	for (int i=15; i>=0; i--) {
@@ -343,13 +351,20 @@ namespace MODULE
 	}
 
 	rti::core::Guid guid= convertIArrayToGuid(iarr);
+
+	// update my vote array based on the roll (i)
+	for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++)
+	  if (guid == my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
+	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[i]++;
+	
+	/*
 	
         if (guid == my_redundancy_info_obj->getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->guid)
 	  {
 	    my_redundancy_info_obj->\
 	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->roll=roll_array[i];
 	    my_redundancy_info_obj->\
-	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->votes[i]=1;
+	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->votes[i]++;
 
 	    std::cout << " I Registered votes for myself: "
 		      <<  my_redundancy_info_obj->getTrackerState_ptr \
@@ -360,29 +375,70 @@ namespace MODULE
 	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->votes[i] << std::endl;
 
 	  }
-      }
+	*/
+      } // for
   
     }
- 
     // cast our vote - write the vote sample
     this->topicWriter.write(*this->getMyDataSample());
-  
   }
 
-
+    
   VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant,
 		   RedundancyInfo* redundancy_info_obj)
     : Reader(participant, "VoteType", "subscriber::vote_topic_reader")
   {
     this->my_redundancy_info_obj = redundancy_info_obj;    
   };
+  
+
+  rti::core::Guid VoteRdr::extractGuid (dds::core::xtypes::DynamicData& sample,
+					std::string topicField)
+  {
+      std::vector<uint8_t> seq_values_p = sample.get_values<uint8_t>(topicField);
+    
+      uint8_t iarr[16];
+      for (int i=15; i>=0; i--) {
+	iarr[i]=seq_values_p.back();
+	seq_values_p.pop_back();
+      }
+
+      rti::core::Guid guid= convertIArrayToGuid(iarr);
+      return (guid);
+  }
+
 
   void VoteRdr::handler(dds::core::xtypes::DynamicData& data)
   {
-    std::cout << "Received Vote" << std::endl;
-    // ensure only one vote per tracker, check and set boo Ivoted.
-    std::vector<uint8_t> seq_values_p = data.get_values<uint8_t>("SourceParticipantHandle");
-    
+    //std::cout << "Received Vote" << std::endl;
+
+    rti::core::Guid guid;
+    bool tracker_voted {false};
+    // verify this tracker has not already voted (should be impossible)
+    guid = this->extractGuid(data, "SourceParticipantHandle");
+    for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
+      if (guid == \
+	  my_redundancy_info_obj->getTrackerState_ptr(i)->guid	\
+	  && \
+	  my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted) {
+	tracker_voted = true;
+	break;
+      }
+    }
+
+    if (!tracker_voted) {
+	// go through and extact the vote Primary to Tertiary
+	for (int l=0; l<my_redundancy_info_obj->numberOfTrackers(); l++) {
+	  guid = this->extractGuid(data, roll_string_map[l]);
+	  // see who's Guid we are getting a vote for?
+	  for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
+	    if (guid == \
+		my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
+	      // increment the vote for tracker based on the roll we are checking
+	      my_redundancy_info_obj->getTrackerState_ptr(i)->votes[l]++;
+	  }
+	} // for l;
+    } // if tracker did not vote
   };
     
 } // namespace MODULE
