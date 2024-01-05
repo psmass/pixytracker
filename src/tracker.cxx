@@ -27,7 +27,7 @@ namespace MODULE
   #define PERIODIC true
   dds::core::Duration DEFAULT_PERIOD {1,0}; // 1 second default writer rate
 
-  enum SM_States {INITIALIZE, VOTE, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
+  enum SM_States {INITIALIZE, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
   
 void run_tracker_application(unsigned int tracked_channel) {
    // Create the participant
@@ -99,11 +99,12 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// Note:  The sleep in INITIALIZE ensures we wait at least 1 sec after
 	//        all the trackers, if all three trackers are up, and makes a one time
 	//        worst case 10sec startup.
-	//        The sleep in VOTE: ensures we allow all votes to be received prior
-	//        to processing the results, a delay of 1 second is not significant
-	//        since it's either at initialization (one time) or operationally,
-	//        if the primary had failed, the secondary is running things and this
-	//        simply promotes the secondary to primary.
+	//        Any delay in WAIT_VOTES_IN either only adds a one time delay to
+	//        initialization, or if operational, determines how fast the a
+	//        reassessment is while the PRIMARY or SECONDARY continues to
+	//        publish (i.e. both cases simply time to STEADY_STATE) - i.e.
+	//        HB dead-line determines switch over time an not reVoteing.
+	//       
       case INITIALIZE:
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
 	std::cout << "i." << redundancy_info.numberOfTrackers() << std::flush;
@@ -114,12 +115,18 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 	
       case VOTE:
-	// this state tranitions quickly once we vote
+	// this state tranitions quickly once we vote and ensure one vote
 	std::cout << "\nSTATE: VOTING" << std::endl;
 	//redundancy_info.clearIvoted(); // allow everyone to vote
 	vote_wtr.vote(); // place my vote for Primary/Sec/Tertiary
-	rti::util::sleep(dds::core::Duration(1)); // extra sec to register all votes
-	state=VOTE_RESULTS;
+	state=WAIT_VOTES_IN;
+	break;
+
+      case WAIT_VOTES_IN:
+	// wait for all votes to be in, if < 3 the timing is dependent
+	// upon delays from different trackers starting.
+        if (redundancy_info.votesIn() == redundancy_info.numberOfTrackers()) 
+	  state=VOTE_RESULTS;
 	break;
 
       case VOTE_RESULTS: // wait one tick to ensure Vote are in and counted

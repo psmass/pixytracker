@@ -72,6 +72,8 @@ namespace MODULE
     
     void sortSaveHbGuid(rti::core::Guid hb_guid);
     int numberOfTrackers(void) {return this->number_of_trackers;}
+    void incVotesIn(void) {this->number_of_votes_in++;}
+    int votesIn(void) {return this->number_of_votes_in;}
     TrackerState* getTrackerState_ptr(int i) {return ordered_array_tracker_state_ptrs[i];};
 
     void clearIvoted(void) {
@@ -95,6 +97,7 @@ namespace MODULE
   private:
     int my_ordinal {1}; // ordinals of trackers are 1,2,3 and index the ordered * array
     int number_of_trackers {1};
+    int number_of_votes_in {1}; // 1 is our own internal vote
     rti::core::Guid ff_guid; // null guid
     rti::core::Guid primary, secondary, tertiary;
     TrackerState array_tracker_states[3];

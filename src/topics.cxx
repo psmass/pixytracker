@@ -410,7 +410,7 @@ namespace MODULE
 
   void VoteRdr::handler(dds::core::xtypes::DynamicData& data)
   {
-    //std::cout << "Received Vote" << std::endl;
+    std::cout << "Received Vote" << std::endl;
 
     rti::core::Guid guid;
     bool tracker_voted {false};
@@ -427,15 +427,16 @@ namespace MODULE
     }
 
     if (!tracker_voted) {
-	// go through and extact the vote Primary to Tertiary
-	for (int l=0; l<my_redundancy_info_obj->numberOfTrackers(); l++) {
-	  guid = this->extractGuid(data, roll_string_map[l]);
-	  // see who's Guid we are getting a vote for?
-	  for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
-	    if (guid == \
-		my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
-	      // increment the vote for tracker based on the roll we are checking
-	      my_redundancy_info_obj->getTrackerState_ptr(i)->votes[l]++;
+      my_redundancy_info_obj->incVotesIn();
+      // go through and extact the vote Primary to Tertiary
+      for (int l=0; l<my_redundancy_info_obj->numberOfTrackers(); l++) {
+	guid = this->extractGuid(data, roll_string_map[l]);
+        // see who's Guid we are getting a vote for?
+	for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
+	  if (guid ==							\
+	      my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
+	    // increment the vote for tracker based on the roll we are checking
+	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[l]++;
 	  }
 	} // for l;
     } // if tracker did not vote
