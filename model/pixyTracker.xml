@@ -98,6 +98,12 @@
           <ownership_strength>
             <value>1</value>
           </ownership_strength>
+	  <deadline> <!-- 100,000,000 ns = 100ms -->
+	    <period>
+	      <sec>0</sec>
+	      <nanosec>100000000</nanosec>
+	    </period>
+	  </deadline>
         </datawriter_qos>
       </qos_profile>
       <qos_profile name="Durable">
