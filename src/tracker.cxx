@@ -66,7 +66,6 @@ void run_tracker_application(unsigned int tracked_channel) {
     int ten_sec_cnt {0};    // initial worst case wait period to vote
 
     int cycle_cnt {0}; // These two vars used to slow state printouts
-    bool new_state {true};
 
     // used in SM to change ownership strengthor servo_writer  based on my roll vote
     dds::pub::qos::DataWriterQos writer_qos = servo_writer.getMyDataWriter().qos();
@@ -115,10 +114,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	//        HB dead-line determines switch over time an not reVoteing.
 	//       
       case INITIALIZE:
-	if (new_state) { // slow down printouts
-	  new_state=false;
-	  cycle_cnt=0;
-	}
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
 	if (!(cycle_cnt%10))
 	  std::cout << ":" << std::flush;
@@ -137,10 +132,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 
       case WAIT_VOTES_IN:
-	if (new_state) { // slow down printouts
-	  new_state=false;
-	  cycle_cnt=0;
-	}
 	if (!(cycle_cnt%10))
 	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
 	// wait for all votes to be in, if < 3 the timing is dependent
@@ -167,10 +158,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 	
       case STEADY_STATE:
-	if (new_state) { // slow down printouts
-	  new_state=false;
-	  cycle_cnt=0;
-	}
 	if (!(cycle_cnt%10))
 	  std::cout << "." << std::flush;
 	break;
