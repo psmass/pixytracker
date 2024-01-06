@@ -37,13 +37,16 @@ void run_tracker_application(unsigned int tracked_channel) {
 
     RedundancyInfo redundancy_info(participant); // info to share beteween Heartbeat and Vote logic
     
-    // Instantiate Topic Readers and Writers w/threads
+    // Instantiate Topic Readers and Writers w/threads. Note, the names eg. servo_writer is
+    // just a handle to the server_writer and not the actual DDS writer (use the getMyDataWriter())
+    // fucntion from the ddsEntities.hpp writer class.
     ServoWtr servo_writer(participant); 
     ShapesRdr shapes_reader(participant, &servo_writer);
     HeartbeatWtr tracker_hb_wtr(participant, &redundancy_info, PERIODIC, DEFAULT_PERIOD);
     HeartbeatRdr tracker_hb_rdr(participant, &redundancy_info);
     VoteWtr vote_wtr(participant, &redundancy_info);
     VoteRdr vote_rdr(participant, &redundancy_info);
+
     
     // Ignore our own writers (e.g. heartbeat and votes
     dds::domain::ignore(participant, participant.instance_handle());
@@ -65,6 +68,12 @@ void run_tracker_application(unsigned int tracked_channel) {
     int cycle_cnt {0}; // These two vars used to slow state printouts
     bool new_state {true};
 
+    // used in SM to change ownership strengthor servo_writer  based on my roll vote
+    dds::pub::qos::DataWriterQos writer_qos = servo_writer.getMyDataWriter().qos();
+    dds::core::policy::OwnershipStrength ownership_strength;
+    int ownership_strength_value {1};
+
+    
     while (!application::shutdown_requested) {
       //
       // This block describes a state machine implemented int the main thread
@@ -112,7 +121,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	}
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
 	if (!(cycle_cnt%10))
-	  std::cout << "i." << redundancy_info.numberOfTrackers() << std::flush;
+	  std::cout << ":" << std::flush;
 	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==90) {
 	  rti::util::sleep(dds::core::Duration(1)); // extra sec to register HBs
 	  state=VOTE;
@@ -146,6 +155,13 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// or inconsistent trackers. Set Pixy_Servo_Strength based on
 	// results: PRIMARY 30, SECONDARY 20, TERTIARY 10
 	redundancy_info.assessVoteResults();
+
+	// change my ownership strength based on my roll.
+        ownership_strength_value = redundancy_info.getMyRollStrength();
+	ownership_strength.value(ownership_strength_value);
+	writer_qos << ownership_strength;
+	servo_writer.getMyDataWriter().qos(writer_qos);
+
 	//redundancy_info.printVoteResults();
 	state=STEADY_STATE;
 	break;

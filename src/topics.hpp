@@ -49,6 +49,7 @@ namespace MODULE
   
   enum State {FAILED = 0, OPERATIONAL};
   enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
+  
   struct TrackerState {
     rti::core::Guid guid;
     bool Ivoted {false}; // track if this tracker vote has been processed already
@@ -69,7 +70,7 @@ namespace MODULE
     int getMyOrdinal(void) {return this->my_ordinal;};
     rti::core::Guid getMyGuid() {
       return this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->guid;}
-    
+    int getMyRollStrength(void);
     void sortSaveHbGuid(rti::core::Guid hb_guid);
     int numberOfTrackers(void) {return this->number_of_trackers;}
     void incVotesIn(void) {this->number_of_votes_in++;}

@@ -20,7 +20,6 @@ namespace MODULE
   // Array to Index map enum Roll
   enum Roll roll_array[4]{PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
   std::string roll_string_map[3] {"Primary", "Secondary", "Tertiary"};
-
   
   /* Helper functions to covert between InstanceHandles, GUIDs and arrays
      Instances is what I can access, Guids for math, arrays to place as
@@ -72,6 +71,15 @@ namespace MODULE
       ordered_array_tracker_state_ptrs[i]=&array_tracker_states[i];
 
   }
+
+  
+  int RedundancyInfo::getMyRollStrength()
+  {
+    int ownership_strength_roll_map[3] {30,20,10};
+    return ownership_strength_roll_map					\
+      [this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->roll];
+  }
+
 
   void RedundancyInfo::sortSaveHbGuid(rti::core::Guid hb_guid)
   {
