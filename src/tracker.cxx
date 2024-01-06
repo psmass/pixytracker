@@ -61,7 +61,10 @@ void run_tracker_application(unsigned int tracked_channel) {
 
     enum SM_States state = INITIALIZE;
     int ten_sec_cnt {0};    // initial worst case wait period to vote
-    
+
+    int cycle_cnt {0}; // These two vars used to slow state printouts
+    bool new_state {true};
+
     while (!application::shutdown_requested) {
       //
       // This block describes a state machine implemented int the main thread
@@ -92,10 +95,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       // detected trackers (i.e. loss of heartbeat or new tracker heartbeat),
       // or it may SHUT_DOWN if directed.
       //
-
-      switch (state) {
-
-	
+      switch (state) {	
 	// Note:  The sleep in INITIALIZE ensures we wait at least 1 sec after
 	//        all the trackers, if all three trackers are up, and makes a one time
 	//        worst case 10sec startup.
@@ -106,8 +106,13 @@ void run_tracker_application(unsigned int tracked_channel) {
 	//        HB dead-line determines switch over time an not reVoteing.
 	//       
       case INITIALIZE:
+	if (new_state) { // slow down printouts
+	  new_state=false;
+	  cycle_cnt=0;
+	}
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
-	std::cout << "i." << redundancy_info.numberOfTrackers() << std::flush;
+	if (!(cycle_cnt%10))
+	  std::cout << "i." << redundancy_info.numberOfTrackers() << std::flush;
 	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==90) {
 	  rti::util::sleep(dds::core::Duration(1)); // extra sec to register HBs
 	  state=VOTE;
@@ -123,7 +128,12 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 
       case WAIT_VOTES_IN:
-	std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
+	if (new_state) { // slow down printouts
+	  new_state=false;
+	  cycle_cnt=0;
+	}
+	if (!(cycle_cnt%10))
+	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
 	// wait for all votes to be in, if < 3 the timing is dependent
 	// upon delays from different trackers starting.
         if (redundancy_info.votesIn() == redundancy_info.numberOfTrackers()) 
@@ -141,7 +151,12 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 	
       case STEADY_STATE:
-	std::cout << "." << std::flush;
+	if (new_state) { // slow down printouts
+	  new_state=false;
+	  cycle_cnt=0;
+	}
+	if (!(cycle_cnt%10))
+	  std::cout << "." << std::flush;
 	break;
 	
       case SHUT_DOWN:
@@ -154,7 +169,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       default:
 	;
       } // switch
-      
+      cycle_cnt++;
       rti::util::sleep(dds::core::Duration(0,100000000));
       ten_sec_cnt++;
     }

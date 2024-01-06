@@ -53,7 +53,7 @@ namespace MODULE
     rti::core::Guid guid;
     bool Ivoted {false}; // track if this tracker vote has been processed already
     int votes[3] {0, 0, 0}; // votes for tracker w/Guid {Primary, Secondary, Tertiary}
-    enum State state[3] {FAILED, FAILED, FAILED};
+    enum State state {FAILED};
     Roll roll {UNASSIGNED};
   }; 
 

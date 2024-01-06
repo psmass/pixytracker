@@ -67,7 +67,7 @@ namespace MODULE
     // initialize guid tracking array to my_guid followed by 0's
     uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
     rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
-    this->array_tracker_states[0].state[0]=OPERATIONAL; // set myself operational   
+    this->array_tracker_states[0].state=OPERATIONAL; // set myself operational   
     this->array_tracker_states[1].guid=ff_guid;
     this->array_tracker_states[2].guid=ff_guid;
 
@@ -123,11 +123,13 @@ namespace MODULE
   
   void RedundancyInfo::assessVoteResults(void)
   {
+    /*
     std::cout << "My Tracker Guid: "
 	      << this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->guid
 	      << " My Ordinal: " << this->my_ordinal
 	      << std::endl;
-
+    */
+    
     // Each tracker should show votes for one roll = number of trackers and
     // the rest 0. NOTE: while initially tracker order and rolls are correlated
     // (i.e. Primary is ordinal 1, Secondary ordinal 2, Tertiary 3, over time
@@ -136,28 +138,49 @@ namespace MODULE
     // their roll and consistency. If inconsistent index of non-zero looser
     // index is the faulty tracker.
 
-    /*
-    int largest_roll_vote_indx {0}, largest_roll_vote_tally {0};  
+    int roll_vote {0}, largest_roll_vote_idx {0}, largest_roll_vote_tally {0};
+    
     for (int ord=0; ord<this->number_of_trackers; ord++) {
       // check one vote = number_of_trackers and all others are 0
       // For a single fault in a tripple redundant system, one roll_vote
       // might be 2 while one of the others is 1. Vote of 1,1,1 would
-      // be a double fault. Possible combos are (3,0,0) (0,3,0), (0,0,3),
-      // Faulted or missing unit - (2,0,0), (0,2,0), (0,0,2), or
-      // Simplex (1,0,0), (0,1,0), (0,0,1).
-      // Inconsistent state would be: (2,1,0), (2,0,1), (
+      // be a double fault. Possible consistent states are:
+      //      1. (3,0,0) (0,3,0), (0,0,3),
+      //      2. Faulted or missing unit - (2,0,0), (0,2,0), (0,0,2), 
+      //      3. Simplex (1,0,0), (0,1,0), (0,0,1).
       //
-      for (int roll=0; roll<this->number_of_trackers; roll++) {
-	roll_vote=this->ordered_array_tracker_state_ptrs[ord].vote[roll]
+      // Inconsistent vote state would be:
+      //      1. Any vote that does not add up to the number of trackers.
+      //         But this cannot occur, since when we read the vote sample, we
+      //         pulled number_of_trackers of guids out of it. DDS would have
+      //         asserted if we had read a null field).
+      //      2. (2,1,0), (2,0,1), (1,1,1),        
+      //          F[1]     F[3]     double fault - everyone voted different
+      //      3. (0,1,1), (1,0,1), (1,1,0)        (and amigious -who's right?)
+      //          Double faults and ambigious.
+      //
+      //       We won't check for double faults - TODO: Assert() if a double fault
+      //
+      largest_roll_vote_tally = 0; 
+      for (int roll_idx=0; roll_idx<this->number_of_trackers; roll_idx++) {
+	roll_vote=this->ordered_array_tracker_state_ptrs[ord]->votes[roll_idx];
 	if (roll_vote > largest_roll_vote_tally) { // track winner
 	    largest_roll_vote_tally = roll_vote;
-	    largest_roll_vote_index = i;
-	  if(roll_vote == 0)
-	    break;
-	  if (roll_vote == this->number_of_trackers
-	      this->number_of_trackers) {
-	  } else {
-    */	    
+	    largest_roll_vote_idx = roll_idx;
+	}
+	// check for single fault cases (2,1,0) and (2,0,1)
+	// mark faulted tracker
+	if(this->number_of_trackers==3 && roll_vote == 1) { 
+	  this->ordered_array_tracker_state_ptrs[ord]->state=FAILED;
+	}
+      } // for roll_idx
+
+      // assign the winning roll to this tracker
+      this->ordered_array_tracker_state_ptrs[ord]->roll=roll_array[largest_roll_vote_idx];
+    } // for ord
+    std::cout << "This Tracker was unanomously voted Roll: "
+	      << roll_string_map[this->ordered_array_tracker_state_ptrs[my_ordinal-1]->roll]
+	      << std::endl;
   };
      
   ServoWtr::ServoWtr(
@@ -474,7 +497,7 @@ namespace MODULE
 	if (l>1)
 	  for (int k=0; k<l; k++)
 	    if (guid[k]==guid[l])
-	      ; //goto bad_vote;
+	      goto bad_vote;
        }
 			  
       my_redundancy_info_obj->incVotesIn(); // mark this tracker as voted
