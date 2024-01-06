@@ -114,6 +114,16 @@ namespace MODULE
 	     dds::core::Duration period =std::chrono::seconds(4));
     ~ServoWtr(void){};
 
+    // allows us to enable and disable writing (see writeData() member func)
+    void enable(void) {this->enabled_to_write = true; };
+    void disable(void) {this->enabled_to_write = false; };
+    void printGimbalPosition(void) {
+	std::cout << "P: " << gimbal.get_pan_position()			\
+	       	  <<" T: " << gimbal.get_tilt_position()		\
+		  << "          ""\r" << std::flush;
+    };
+
+
     // write() is effectively a runtime down cast for periodic data
     // void write();
   
@@ -125,6 +135,7 @@ namespace MODULE
     GIMBAL::
     Gimbal gimbal;
     int frame_count {0};
+    bool enabled_to_write {false};
   };
 
   class ShapesRdr : public Reader {

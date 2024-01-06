@@ -115,8 +115,10 @@ void run_tracker_application(unsigned int tracked_channel) {
 	//       
       case INITIALIZE:
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
-	if (!(cycle_cnt%10))
+	if (!(cycle_cnt++ %10)) {
+	  cycle_cnt=1;
 	  std::cout << ":" << std::flush;
+	}
 	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==90) {
 	  rti::util::sleep(dds::core::Duration(1)); // extra sec to register HBs
 	  state=VOTE;
@@ -132,8 +134,10 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 
       case WAIT_VOTES_IN:
-	if (!(cycle_cnt%10))
+	if (!(cycle_cnt++ %10)) {
+	  cycle_cnt = 1;
 	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
+	};
 	// wait for all votes to be in, if < 3 the timing is dependent
 	// upon delays from different trackers starting.
         if (redundancy_info.votesIn() == redundancy_info.numberOfTrackers()) 
@@ -152,14 +156,18 @@ void run_tracker_application(unsigned int tracked_channel) {
 	ownership_strength.value(ownership_strength_value);
 	writer_qos << ownership_strength;
 	servo_writer.getMyDataWriter().qos(writer_qos);
+	servo_writer.enable(); // enable after we've set the strength
 
 	//redundancy_info.printVoteResults();
 	state=STEADY_STATE;
 	break;
 	
       case STEADY_STATE:
-	if (!(cycle_cnt%10))
-	  std::cout << "." << std::flush;
+	if (!(cycle_cnt++%10)) {
+	  cycle_cnt=1;
+	  servo_writer.printGimbalPosition();
+	  //std::cout << "." << std::flush;
+	}
 	break;
 	
       case SHUT_DOWN:
@@ -172,7 +180,6 @@ void run_tracker_application(unsigned int tracked_channel) {
       default:
 	;
       } // switch
-      cycle_cnt++;
       rti::util::sleep(dds::core::Duration(0,100000000));
       ten_sec_cnt++;
     }

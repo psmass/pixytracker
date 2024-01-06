@@ -201,15 +201,12 @@ namespace MODULE
 
   void ServoWtr::writeData(int32_t x, int32_t y)
   {
-    gimbal.update_pan(x);
-    gimbal.update_tilt(y);
-    this->getMyDataSample()->value<uint16_t>("pan", gimbal.get_pan_position());
-    this->getMyDataSample()->value<uint16_t>("tilt", gimbal.get_tilt_position());
-    this->topicWriter.write(*this->getMyDataSample());
-    if (this->frame_count++ > 10) {
-      this->frame_count = 0;
-      //std::cout << "P: " << gimbal.get_pan_position()			\
-//		<<" T: " << gimbal.get_tilt_position() << "          ""\r" << std::flush;
+    if (this->enabled_to_write) {
+      gimbal.update_pan(x);
+      gimbal.update_tilt(y);
+      this->getMyDataSample()->value<uint16_t>("pan", gimbal.get_pan_position());
+      this->getMyDataSample()->value<uint16_t>("tilt", gimbal.get_tilt_position());
+      this->topicWriter.write(*this->getMyDataSample());
     }
   };
 
@@ -220,7 +217,8 @@ namespace MODULE
     this->servo_writer = servoWriter;
   };
 
-  void ShapesRdr::handler(dds::core::xtypes::DynamicData& data) {
+  void ShapesRdr::handler(dds::core::xtypes::DynamicData& data)
+  {
     DDS_ReturnCode_t retcode;
     //std::cout << "Shapes Reader Handler Executing" << std::endl;
     // Control the pan & til
