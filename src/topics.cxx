@@ -17,13 +17,15 @@
 namespace MODULE
 {
 
-  /* Helper functions to covert between InstanceHandles, GUIDs and arrays
-   */
-
   // Array to Index map enum Roll
   enum Roll roll_array[4]{PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
   std::string roll_string_map[3] {"Primary", "Secondary", "Tertiary"};
+
   
+  /* Helper functions to covert between InstanceHandles, GUIDs and arrays
+     Instances is what I can access, Guids for math, arrays to place as
+     sequences in written samples.
+   */
   // need to covert Instance Handles to Guids to use the math operators to compare values
   rti::core::Guid convertToGuid ( const dds::core::InstanceHandle& instanceHandle ) {
     rti::core::Guid guid;
@@ -31,7 +33,7 @@ namespace MODULE
     return guid;
   }
 
-  // test routine to create a Guid to try comparison operators
+  // routing to convert an int array to guid (extact sample sequence to guid)
   rti::core::Guid convertIArrayToGuid ( const uint8_t *array )
   {
     rti::core::Guid guid;
@@ -39,13 +41,7 @@ namespace MODULE
     return guid;
   }
 
-  // routine to put Instance Handle in an array of 8 bit ints
-  void convertInstanceHandleToIArray (uint8_t *array, const dds::core::InstanceHandle& instanceHandle )
-  {
-    memcpy(array,reinterpret_cast<DDS_Octet const *>(&instanceHandle),16);
-  }
-
-  // routine to put Guid in an array of 8 bit ints
+  // routine to put Guid in an array of 8 bit ints (to place in a sample sequence)
   void convertGuidToIArray (uint8_t *array, rti::core::Guid guid )
   {
     memcpy(array,reinterpret_cast<DDS_Octet const *>(&guid),16);
