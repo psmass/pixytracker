@@ -25,8 +25,9 @@
 namespace MODULE
 {
   #define PERIODIC true
-  dds::core::Duration DEFAULT_PERIOD {1,0}; // 1 second default writer rate
-
+  dds::core::Duration DEFAULT_PERIOD {0,100000000}; // 100 ms default HB writer rate
+  #define TEN_SEC 40 // main loop clock tick is 250ms. 40 = ten sec
+  
   enum SM_States {INITIALIZE, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
   
 void run_tracker_application(unsigned int tracked_channel) {
@@ -115,11 +116,11 @@ void run_tracker_application(unsigned int tracked_channel) {
 	//       
       case INITIALIZE:
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
-	if (!(cycle_cnt++ %10)) {
+	if (!(cycle_cnt++ %5)) {
 	  cycle_cnt=1;
 	  std::cout << ":" << std::flush;
 	}
-	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==90) {
+	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==TEN_SEC) {
 	  rti::util::sleep(dds::core::Duration(1)); // extra sec to register HBs
 	  state=VOTE;
 	};
@@ -128,13 +129,13 @@ void run_tracker_application(unsigned int tracked_channel) {
       case VOTE:
 	// this state tranitions quickly once we vote and ensure one vote
 	std::cout << "\nSTATE: VOTING" << std::endl;
-	//redundancy_info.clearIvoted(); // allow everyone to vote
+	redundancy_info.clearVotes(); // allow everyone to vote
 	vote_wtr.vote(); // place my vote for Primary/Sec/Tertiary
 	state=WAIT_VOTES_IN;
 	break;
 
       case WAIT_VOTES_IN:
-	if (!(cycle_cnt++ %10)) {
+	if (!(cycle_cnt++ %5)) {
 	  cycle_cnt = 1;
 	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
 	};
@@ -163,11 +164,27 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 	
       case STEADY_STATE:
-	if (!(cycle_cnt++%10)) {
-	  cycle_cnt=1;
-	  servo_writer.printGimbalPosition();
-	  //std::cout << "." << std::flush;
-	}
+	servo_writer.printGimbalPosition();
+        //std::cout << "." << std::flush;
+	// check for hb deadline missed from a tracker. The SM runs at 250ms
+	// the HB run at 100ms. The SM will clear the count, receive HBs will
+	// increment the count so a 0 will indicate a deadline miss.
+	// note: ignore our own count since we don't get our own HBs
+	/*
+	for (int i=0; i<redundancy_info.numberOfTrackers(); i++){
+	  if ((i !=redundancy_info.getMyOrdinal()-1) && \
+	      (redundancy_info.getMyTrackerStatePtr()->hbDeadlineCnt[i] == 0)) {
+	    std::cout << " FAULT DEADLINE MISS -  Tracker: "
+		      << redundancy_info.getTrackerState_ptr(i)->guid
+		      << std::endl;
+	    redundancy_info.clearTrackerData(i);
+	    state=VOTE;
+	  }
+	  // zero the count
+	  redundancy_info.getMyTrackerStatePtr()->hbDeadlineCnt[i] = 0;
+	} // for
+	*/
+	
 	break;
 	
       case SHUT_DOWN:
@@ -177,10 +194,11 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// print message/red light LEDs and SHUT DOWN
 	state=SHUT_DOWN;
 	break;
+	
       default:
 	;
       } // switch
-      rti::util::sleep(dds::core::Duration(0,100000000));
+      rti::util::sleep(dds::core::Duration(0,250000000));
       ten_sec_cnt++;
     }
 

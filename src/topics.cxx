@@ -69,6 +69,34 @@ namespace MODULE
       [this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->roll];
   }
 
+  void RedundancyInfo::clearTrackerData(int tracker) {
+    uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
+    rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
+    this->ordered_array_tracker_state_ptrs[tracker]->guid=ff_guid; 
+    this->ordered_array_tracker_state_ptrs[tracker]->state=FAILED; 
+    this->ordered_array_tracker_state_ptrs[tracker]->roll=UNASSIGNED;
+    this->number_of_trackers--;
+
+    //TODO: refactor this code iwth sortSaveHBGuid(rti::core::Guid hb_guid) below
+    TrackerState* temp_tracker_state_ptr;
+      for (int l=0; l<this->number_of_trackers-1; l++) {
+	
+	for (int i=0; i<this->number_of_trackers-1; i++) {
+	  if (this->ordered_array_tracker_state_ptrs[i]->guid >
+	      this->ordered_array_tracker_state_ptrs[i+1]->guid) {
+	    // we are going to swap the pointers to order the pointer array
+	    temp_tracker_state_ptr = this->ordered_array_tracker_state_ptrs[i];
+	    if (i == this->my_ordinal-1) { // we are about to bubble ourselves, adjust ordinal
+	      this->my_ordinal = i+2;  // remember ordinals are 1 based
+	    }
+	    this->ordered_array_tracker_state_ptrs[i] = \
+	      this->ordered_array_tracker_state_ptrs[i+1];
+	    this->ordered_array_tracker_state_ptrs[i+1] = temp_tracker_state_ptr;
+	  }
+	}
+      }
+
+  }
 
   void RedundancyInfo::sortSaveHbGuid(rti::core::Guid hb_guid)
   {
@@ -507,7 +535,7 @@ namespace MODULE
 	    if (guid[k]==guid[l])
 	      goto bad_vote;
        }
-			  
+      
       my_redundancy_info_obj->incVotesIn(); // mark this tracker as voted
       // go through and extact the vote Primary to Tertiary
       for (int roll_idx=0; roll_idx<my_redundancy_info_obj->numberOfTrackers(); roll_idx++) {
