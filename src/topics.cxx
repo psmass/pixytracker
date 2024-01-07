@@ -49,16 +49,6 @@ namespace MODULE
   
   RedundancyInfo::RedundancyInfo(const dds::domain::DomainParticipant participant)
   {
-    /* Get my participant Instance Handle and send it rather than Guids.
-       We'll need to convert instance handles to GUIDS to use the math operators. 
-       Note sure how to get Guid directly and can't do math on Instance handle.
-     */
-    const dds::core::InstanceHandle handle=participant->instance_handle();
-    // std::cout << "INSTANCE HANDLE: " << handle << std::endl;
-
-    this->array_tracker_states[0].guid  = convertToGuid(handle);
-    std::cout << "GUID Convert: " << this->array_tracker_states[0].guid  << std::endl;
-
     // initialize guid tracking array to my_guid followed by 0's
     uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
     rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
@@ -69,7 +59,6 @@ namespace MODULE
     // initialize the ordered array of tracker ptrs
     for (int i=0; i<3; i++)
       ordered_array_tracker_state_ptrs[i]=&array_tracker_states[i];
-
   }
 
   
@@ -83,7 +72,6 @@ namespace MODULE
 
   void RedundancyInfo::sortSaveHbGuid(rti::core::Guid hb_guid)
   {
-
     // first make sure we don't already have this tracker
     bool dup_guid {false};
     for (int i=0; i<3; i++) {
@@ -240,7 +228,25 @@ namespace MODULE
   {
     this->my_redundancy_info_obj = redundancy_info_obj;
 
-    // get my guid and place it in the heartbeat sample
+    /* Get my Heartbeat writer Instance Handle to use as my unique identifier.
+       Note: we need the HB Writer (instance) GUID to compare should HB missed
+       Deadline trigger to know which instance to null out and revote.
+       We'll need to convert instance handles to GUIDS to use the math operators. 
+       Note sure how to get Guid directly and can't do math on Instance handle.
+     */
+    const dds::core::InstanceHandle handle=this->getMyDataWriter()->instance_handle();
+    //std::cout << "INSTANCE HANDLE: " << handle << std::endl;
+
+    // initially all trackers place their guid in the [0] index prior to bubble sorting
+    // the ordered_array_tracker_state_ptrs[3]
+    this->my_redundancy_info_obj->getMyTrackerStatePtr()->guid  = convertToGuid(handle);
+    std::cout << "GUID Convert: "
+	      << this->my_redundancy_info_obj->getMyTrackerStatePtr()->guid
+	      << std::endl;
+    
+    // get my guid and place it in the heartbeat sample (note it's actually already there
+    // in the meta data, but we need to key on it so as to detect the HB Wtr instance
+    // should it miss a deadline (i.e. fail)
     uint8_t iarr[16];
     convertGuidToIArray(iarr, redundancy_info_obj->getMyGuid());
 

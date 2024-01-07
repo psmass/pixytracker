@@ -77,6 +77,8 @@ namespace MODULE
     void assessVoteResults(void);
     int votesIn(void) {return this->number_of_votes_in;}
     TrackerState* getTrackerState_ptr(int i) {return ordered_array_tracker_state_ptrs[i];};
+    // Each trackers own state is kept in array_tracker_state[0] 
+    TrackerState* getMyTrackerStatePtr(void) { return &array_tracker_states[0]; }
 
     void clearIvoted(void) {
       for (int i=0; i<this->number_of_trackers; i++)
