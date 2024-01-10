@@ -88,7 +88,6 @@ namespace MODULE
 
   void RedundancyInfo::sortSaveGuids()
   {
-    this->printSortedTrackers();
     TrackerState* temp_tracker_state_ptr;
     for (int l=0; l<2; l++) {
 	
@@ -114,7 +113,7 @@ namespace MODULE
       } // for i
     } // for l
       
-    this->printSortedTrackers();
+    // this->printSortedTrackers();
   }
 
   
@@ -336,6 +335,7 @@ namespace MODULE
 	if (this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid == \
 	    this->my_redundancy_info_obj->getNullGuid()) {
 	  this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid = hb_guid;
+	  this->my_redundancy_info_obj->getTrackerState_ptr(i)->state = OPERATIONAL;
 	  this->my_redundancy_info_obj->sortSaveGuids();
 	  break;
 	} 
@@ -482,25 +482,6 @@ namespace MODULE
 	  if (guid == my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
 	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[i]++;
 	
-	/*
-	
-        if (guid == my_redundancy_info_obj->getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->guid)
-	  {
-	    my_redundancy_info_obj->\
-	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->roll=roll_array[i];
-	    my_redundancy_info_obj->\
-	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->votes[i]++;
-
-	    std::cout << " I Registered votes for myself: "
-		      <<  my_redundancy_info_obj->getTrackerState_ptr \
-	                          (my_redundancy_info_obj->getMyOrdinal()-1)->guid
-		      << " Index: " << i
-		      << " Roll: " << roll_string_map[i]
-		      << " Vote: " <<  my_redundancy_info_obj-> \
-	      getTrackerState_ptr(my_redundancy_info_obj->getMyOrdinal()-1)->votes[i] << std::endl;
-
-	  }
-	*/
       } // for
   
     }

@@ -134,10 +134,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 
       case WAIT_VOTES_IN:
-	std::cout << "Votes In = " << redundancy_info.votesIn()
-		  << " Trackers =: " << redundancy_info.numberOfTrackers()
-		  << std::endl;
-
 	if (!(cycle_cnt++ %5)) {
 	  cycle_cnt = 1;
 	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
@@ -158,7 +154,8 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// not in vote state, since votes are durable and may already
 	// be in upon restart.
 	redundancy_info.clearVotes(); 
-	redundancy_info.printSortedTrackers();
+	//redundancy_info.printSortedTrackers();
+	redundancy_info.printMyState();
 
 	// change my ownership strength based on my roll.
         ownership_strength_value = redundancy_info.getMyRollStrength();

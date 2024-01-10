@@ -111,7 +111,7 @@ namespace MODULE
 	this->array_tracker_states[i].Ivoted = false;
     };
 
-    void printVoteResults() {
+    void printVoteResults(void) {
       for (int i=0; i<this->numberOfTrackers(); i++)
 	std::cout << "\nFor Tracker: "
 		  << this->ordered_array_tracker_state_ptrs[i]->guid
@@ -122,9 +122,44 @@ namespace MODULE
 		  << "\nVotes for Tertiary: "
 		  << this->ordered_array_tracker_state_ptrs[i]->votes[2]
 		  << std::endl;
-    };
+    }
     
-    void printSortedTrackers(); 
+    void printSortedTrackers(void);
+
+    void printMyState(void) {
+      // This is the equivalent of what the 4 LEDs on a Rpi will provide.
+      // Forth LED (l to r) -  if Green indicates this tracker is Primary
+      //
+      // First (1), Second (2), and Third (3) LEDs indicates this Trackers
+      // Ordinal (Green) and operational status {Failed(Red), Operational(Off)}
+      // of the corresponding redundant tracker.
+      // If one of these Status LEDs is off the corresponding tracker with the
+      // same Ordinal should be Green. Any
+      // of these LEDs that is Red the corresponding tracker will be off and
+      // can be deduced from the other redundant trackers Green Ordinal LED.
+      //
+      if (this->array_tracker_states[0].roll == PRIMARY) {
+        std::cout << "Tracker Roll: Primary (Green)" << std::endl;
+      }
+      std::cout << " | ";
+      
+      for (int i=0; i<3; i++) {
+      
+	std::cout << "LED:" << i+1; // equivalent of LED position
+	if (this->ordered_array_tracker_state_ptrs[i]->state == FAILED) {
+	  std::cout << " - FAILED (Red) | ";
+	}
+	if (this->ordered_array_tracker_state_ptrs[i]->state == OPERATIONAL) {
+	  if (i+1 == this->my_ordinal) 
+	    std::cout << " -  OK (Grn)  | ";
+          else 
+            std::cout << "              |";
+        }
+      } // for
+      std::cout << std::endl;
+    }
+      
+      
     
   private:
     void clearVotesTracker(int tracker) {
