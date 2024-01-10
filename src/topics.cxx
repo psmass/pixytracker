@@ -19,7 +19,7 @@ namespace MODULE
 
   // Array to Index map enum Roll
   enum Roll roll_array[4]{PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
-  std::string roll_string_map[3] {"Primary", "Secondary", "Tertiary"};
+  std::string roll_string_map[4] {"Primary", "Secondary", "Tertiary", "Not Voted Yet"};
   
   /* Helper functions to covert between InstanceHandles, GUIDs and arrays
      Instances is what I can access, Guids for math, arrays to place as
@@ -52,6 +52,8 @@ namespace MODULE
     // initialize guid tracking array to my_guid followed by 0's
     uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
     rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
+    this->ff_guid = ff_guid; // save this guid
+    
     this->array_tracker_states[0].state=OPERATIONAL; // set myself operational   
     this->array_tracker_states[1].guid=ff_guid;
     this->array_tracker_states[2].guid=ff_guid;
@@ -62,6 +64,21 @@ namespace MODULE
   }
 
   
+  void RedundancyInfo::printSortedTrackers() {
+      std::cout << "DISCOVERED SORTED TRACKERS " << std::endl;
+      std::cout << "This Tracker is Ordinal: " << this->my_ordinal
+		<< " Trackers cnt: " << this->number_of_trackers
+		<< std::endl;
+      for (int i=0; i<3; i++) 
+	std::cout << this->ordered_array_tracker_state_ptrs[i]->guid
+		  << " - "
+		  << roll_string_map[this->ordered_array_tracker_state_ptrs[i]->roll]
+		  << " hb_cnt:"
+		  << this->ordered_array_tracker_state_ptrs[i]->hbDeadlineCnt
+		  << std::endl;
+    }
+
+  
   int RedundancyInfo::getMyRollStrength()
   {
     int ownership_strength_roll_map[3] {30,20,10};
@@ -69,77 +86,66 @@ namespace MODULE
       [this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->roll];
   }
 
-  void RedundancyInfo::clearTrackerData(int tracker) {
-    uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
-    rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
-    this->ordered_array_tracker_state_ptrs[tracker]->guid=ff_guid; 
-    this->ordered_array_tracker_state_ptrs[tracker]->state=FAILED; 
-    this->ordered_array_tracker_state_ptrs[tracker]->roll=UNASSIGNED;
-    this->number_of_trackers--;
-
-    //TODO: refactor this code iwth sortSaveHBGuid(rti::core::Guid hb_guid) below
-    TrackerState* temp_tracker_state_ptr;
-      for (int l=0; l<this->number_of_trackers-1; l++) {
-	
-	for (int i=0; i<this->number_of_trackers-1; i++) {
-	  if (this->ordered_array_tracker_state_ptrs[i]->guid >
-	      this->ordered_array_tracker_state_ptrs[i+1]->guid) {
-	    // we are going to swap the pointers to order the pointer array
-	    temp_tracker_state_ptr = this->ordered_array_tracker_state_ptrs[i];
-	    if (i == this->my_ordinal-1) { // we are about to bubble ourselves, adjust ordinal
-	      this->my_ordinal = i+2;  // remember ordinals are 1 based
-	    }
-	    this->ordered_array_tracker_state_ptrs[i] = \
-	      this->ordered_array_tracker_state_ptrs[i+1];
-	    this->ordered_array_tracker_state_ptrs[i+1] = temp_tracker_state_ptr;
-	  }
-	}
-      }
-
-  }
-
-  void RedundancyInfo::sortSaveHbGuid(rti::core::Guid hb_guid)
+  void RedundancyInfo::sortSaveGuids()
   {
-    // first make sure we don't already have this tracker
-    bool dup_guid {false};
-    for (int i=0; i<3; i++) {
-      if (this->array_tracker_states[i].guid==hb_guid){
-	dup_guid = true;
-	break;
-      }
-    }
-
-    if (!dup_guid) {
-      // This routine is only called if we have < 3 trackers
-      // place on the end of the zero-based array and bubble sort the pointers
-      this->array_tracker_states[this->number_of_trackers].guid = hb_guid;
-      this->number_of_trackers++; // at least two now
-
-      TrackerState* temp_tracker_state_ptr;
-      for (int l=0; l<this->number_of_trackers-1; l++) {
+    this->printSortedTrackers();
+    TrackerState* temp_tracker_state_ptr;
+    for (int l=0; l<2; l++) {
 	
-	for (int i=0; i<this->number_of_trackers-1; i++) {
-	  if (this->ordered_array_tracker_state_ptrs[i]->guid >
-	      this->ordered_array_tracker_state_ptrs[i+1]->guid) {
-	    // we are going to swap the pointers to order the pointer array
-	    temp_tracker_state_ptr = this->ordered_array_tracker_state_ptrs[i];
-	    if (i == this->my_ordinal-1) { // we are about to bubble ourselves, adjust ordinal
-	      this->my_ordinal = i+2;  // remember ordinals are 1 based
-	    }
-	    this->ordered_array_tracker_state_ptrs[i] = \
-	      this->ordered_array_tracker_state_ptrs[i+1];
-	    this->ordered_array_tracker_state_ptrs[i+1] = temp_tracker_state_ptr;
-	  }
+      for (int i=0; i<2; i++) {  // we are only bubble up at most 2
+	if (this->ordered_array_tracker_state_ptrs[i]->guid >
+	    this->ordered_array_tracker_state_ptrs[i+1]->guid) {
+	  // we are going to swap the pointers to order the pointer array
+	  temp_tracker_state_ptr = this->ordered_array_tracker_state_ptrs[i];
+
+	  // bubling up or down so adjust the ordinal - ordinals 1 based
+	  if ( this->my_ordinal-1 == i) // bubbling  up
+	    this->my_ordinal++; 
+	  else if (this->my_ordinal-1 == i+1) // bubbling  down
+	    this->my_ordinal--;  
+	  if (this->my_ordinal < 1 || this->my_ordinal > 3) 
+	    // This should never occur but can cause a null ptr exception
+	    std::cerr << "ORDINAL FAILURE = " << this->my_ordinal << std::endl;
+		
+	  this->ordered_array_tracker_state_ptrs[i] =		\
+	    this->ordered_array_tracker_state_ptrs[i+1];
+	  this->ordered_array_tracker_state_ptrs[i+1] = temp_tracker_state_ptr;
 	}
-      }
-      /*
-      std::cout << "DISCOVERED SORTED TRACKERS " << std::endl;
-      for (int i=0; i<3; i++) 
-	std::cout << this->ordered_array_tracker_state_ptrs[i]->guid
-		  << std::endl;
-      */		      
-    } // if dup
+      } // for i
+    } // for l
+      
+    this->printSortedTrackers();
   }
+
+  
+  void RedundancyInfo::lostTracker(int tracker_ordinal)
+  {
+    // Lost a tracker(tracker_ordinal).  We need to promote all lower trackers
+    // first clear the trackerStat struct[i]. The trackers in order so we just
+    // need to shuffle them forward in the ordered_array_tracker_state_ptrs, and
+    // promote thier roll.
+    // Note: There must be at least 2 trackers as we are 1 and we lost 1.
+    
+    // promote all remaining trackers with lower rolls than the one lost
+    for (int i=0; i<this->number_of_trackers; i++) {
+      // enum Primary 0, Secondary 1, Tertiary 3 
+      if (this->ordered_array_tracker_state_ptrs[tracker_ordinal]->roll <
+	  this->ordered_array_tracker_state_ptrs[i]->roll)
+	this->ordered_array_tracker_state_ptrs[i]->roll =\
+	  roll_array[(this->ordered_array_tracker_state_ptrs[i]->roll)-1];
+     }
+
+    // zero out the lost tracker, drop the number of trackers and resort
+    this->ordered_array_tracker_state_ptrs[tracker_ordinal]->guid =\
+      this->ff_guid;
+    this->ordered_array_tracker_state_ptrs[tracker_ordinal]->roll = \
+      UNASSIGNED;
+    this->clearVotesTracker(tracker_ordinal); // clears Ivoted as well
+    this->ordered_array_tracker_state_ptrs[tracker_ordinal]->state=FAILED;
+    this->number_of_trackers--; 
+    this->sortSaveGuids(); // force reordering of the array
+  }
+    
   
   void RedundancyInfo::assessVoteResults(void)
   {
@@ -202,6 +208,7 @@ namespace MODULE
 	      << roll_string_map[this->ordered_array_tracker_state_ptrs[my_ordinal-1]->roll]
 	      << std::endl;
   };
+
      
   ServoWtr::ServoWtr(
 	const dds::domain::DomainParticipant participant,
@@ -302,25 +309,39 @@ namespace MODULE
 
   void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data)
   {
-    //std::cout << "Received Heartbeat: GUID=";
+    // std::cout << "Received Heartbeat: GUID=";
 
-    // we only assess a guid from a heartbeat if we have available tracker space
-    if (this->my_redundancy_info_obj->numberOfTrackers() < 3) {
-      
-      std::vector<uint8_t> seq_values = data.get_values<uint8_t>("MyParticipantHandle");
+    std::vector<uint8_t> seq_values = data.get_values<uint8_t>("MyParticipantHandle");
     
-      uint8_t iarr[16];
-      for (int i=15; i>=0; i--) {
-	iarr[i]=seq_values.back();
-	seq_values.pop_back();
-      }
+    uint8_t iarr[16];
+    for (int i=15; i>=0; i--) {
+      iarr[i]=seq_values.back();
+      seq_values.pop_back();
+    } 
+    rti::core::Guid hb_guid = convertIArrayToGuid(iarr);
+    
+    bool duplicate {false};
+    // if an existing hb guid, increment my hb dead man/deadline count of
+    // the corresponding tracker
+    for (int i=0; i<this->my_redundancy_info_obj->numberOfTrackers(); i++)
+      if (hb_guid==this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
+	 duplicate=true;
+	 this->my_redundancy_info_obj->getTrackerState_ptr(i)->hbDeadlineCnt++;
+	}
 
-      rti::core::Guid hbGuid= convertIArrayToGuid(iarr);
-      this->my_redundancy_info_obj->sortSaveHbGuid(hbGuid);    
-    
-      //std::cout << hbGuid << std::endl;
-    }
-	   
+    // if new tracker we have available tracker space, find available slot in
+    // tracker array populate it and sort/resort.
+    if  (!duplicate && (this->my_redundancy_info_obj->numberOfTrackers() < 3)) {
+      for (int i=0; i<3; i++)
+	if (this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid == \
+	    this->my_redundancy_info_obj->getNullGuid()) {
+	  this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid = hb_guid;
+	  this->my_redundancy_info_obj->sortSaveGuids();
+	  break;
+	} 
+      this->my_redundancy_info_obj->incNumberOfTrackers();
+      // std::cout << hb_guid << std::endl;
+    }	   
   };
 
 
@@ -334,6 +355,13 @@ namespace MODULE
   {
      this->my_redundancy_info_obj = redundancy_info_obj;
      this->setSampleField("SourceParticipantHandle", redundancy_info_obj->getMyGuid());
+     // initialize all vote samples to NULL guid (so we don't have to worry
+     // about accessing an N/A field
+     for (int i=0; i<3; i++) {
+	this->setSampleField(roll_string_map[i], \
+			     my_redundancy_info_obj->getNullGuid());
+      }
+
   };
 
   
@@ -391,7 +419,6 @@ namespace MODULE
     } // for
     // At this point, durable vote topics would have populated the trackerState
     // object. Hense how we knew was_operational and if we have primary, secondary etc.
-    
     if (was_operational) {
       if (is_primary) {// and was a Primary so keep incumbant in office
 	this->setSampleField("Primary",
@@ -431,7 +458,7 @@ namespace MODULE
       }
     } else { // was not operational, no rolls ever assigned
       // vote by sorted guid, lowest {Primary} to higher 
-      for (int i=0; i<this->my_redundancy_info_obj->numberOfTrackers(); i++) {
+      for (int i=0; i<3; i++) {
 	this->setSampleField(roll_string_map[i], \
 			     my_redundancy_info_obj->getTrackerState_ptr(i)->guid);
       }

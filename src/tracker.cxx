@@ -151,6 +151,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// or inconsistent trackers. Set Pixy_Servo_Strength based on
 	// results: PRIMARY 30, SECONDARY 20, TERTIARY 10
 	redundancy_info.assessVoteResults();
+	redundancy_info.printSortedTrackers();
 
 	// change my ownership strength based on my roll.
         ownership_strength_value = redundancy_info.getMyRollStrength();
@@ -170,20 +171,21 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// the HB run at 100ms. The SM will clear the count, receive HBs will
 	// increment the count so a 0 will indicate a deadline miss.
 	// note: ignore our own count since we don't get our own HBs
-	/*
 	for (int i=0; i<redundancy_info.numberOfTrackers(); i++){
 	  if ((i !=redundancy_info.getMyOrdinal()-1) && \
-	      (redundancy_info.getMyTrackerStatePtr()->hbDeadlineCnt[i] == 0)) {
-	    std::cout << " FAULT DEADLINE MISS -  Tracker: "
+	      (redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt == 0)) {
+	    std::cout << "\nFAULT DEADLINE MISS -  Tracker: "
 		      << redundancy_info.getTrackerState_ptr(i)->guid
 		      << std::endl;
-	    redundancy_info.clearTrackerData(i);
-	    state=VOTE;
-	  }
+	    // we need to drop this tracker and promote all lower trackers
+	    redundancy_info.lostTracker(i);
+	    break;
+	    //state=VOTE;
+	  } else {
 	  // zero the count
-	  redundancy_info.getMyTrackerStatePtr()->hbDeadlineCnt[i] = 0;
+	  redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt = 0;
+	  }
 	} // for
-	*/
 	
 	break;
 	

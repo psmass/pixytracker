@@ -54,9 +54,10 @@ namespace MODULE
     rti::core::Guid guid;
     bool Ivoted {false}; // track if this tracker vote has been processed already
     int votes[3] {0, 0, 0}; // votes for tracker w/Guid {Primary, Secondary, Tertiary}
-    int hbDeadlineCnt[3] {0, 0, 0};
+    int hbDeadlineCnt {0};
     enum State state {FAILED};
     Roll roll {UNASSIGNED};
+
   }; 
 
   class RedundancyInfo {  
@@ -69,25 +70,23 @@ namespace MODULE
     ~RedundancyInfo(void){}
 
     int getMyOrdinal(void) {return this->my_ordinal;};
-    rti::core::Guid getMyGuid() {
+    rti::core::Guid getMyGuid(void) {
       return this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->guid;}
+    rti::core::Guid getNullGuid(void) { return this->ff_guid; }
     int getMyRollStrength(void);
-    void sortSaveHbGuid(rti::core::Guid hb_guid);
+    void sortSaveGuids(void);
     int numberOfTrackers(void) {return this->number_of_trackers;}
+    void incNumberOfTrackers(void) {this->number_of_trackers++;}
     void incVotesIn(void) {this->number_of_votes_in++;}
     int votesIn(void) {return this->number_of_votes_in;}
+    void lostTracker(int tracker_ordinal);
     void assessVoteResults(void);
 
     void clearVotes(void) { // clear votes and Ivoted for each tracker
     for (int i=0; i<this->number_of_trackers; i++) {
-	this->ordered_array_tracker_state_ptrs[i]->votes[0]=0;
-	this->ordered_array_tracker_state_ptrs[i]->votes[1]=0;
-	this->ordered_array_tracker_state_ptrs[i]->votes[2]=0;
-        this->ordered_array_tracker_state_ptrs[i]->Ivoted=0;
+      this->clearVotesTracker(i);
       }
     }
-
-    void clearTrackerData(int tracker); // nulls out the Guid & roll, marks tracker FAILED
       
     TrackerState* getTrackerState_ptr(int i) {return ordered_array_tracker_state_ptrs[i];};
     // Each trackers own state is kept in array_tracker_state[0] 
@@ -109,12 +108,22 @@ namespace MODULE
 		  << "\nVotes for Tertiary: "
 		  << this->ordered_array_tracker_state_ptrs[i]->votes[2]
 		  << std::endl;
-    };	  	  
+    };
+    
+    void printSortedTrackers(); 
     
   private:
+    void clearVotesTracker(int tracker) {
+	this->ordered_array_tracker_state_ptrs[tracker]->votes[0]=0;
+	this->ordered_array_tracker_state_ptrs[tracker]->votes[1]=0;
+	this->ordered_array_tracker_state_ptrs[tracker]->votes[2]=0;
+        this->ordered_array_tracker_state_ptrs[tracker]->Ivoted=0;
+    }
+
     int my_ordinal {1}; // ordinals of trackers are 1,2,3 and index the ordered * array
     int number_of_trackers {1};
     int number_of_votes_in {1}; // 1 is our own internal vote
+    rti::core::Guid ff_guid; // handy for future use
     rti::core::Guid primary, secondary, tertiary;
     TrackerState array_tracker_states[3];
     TrackerState* ordered_array_tracker_state_ptrs[3];
