@@ -172,7 +172,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 	
       case STEADY_STATE:
-	servo_writer.printGimbalPosition();
+	servo_writer.printGimbalPosition();	  
         //std::cout << "." << std::flush;
 	// check for hb deadline missed from a tracker. The SM runs at 250ms
 	// the HB run at 100ms. The SM will clear the count, receive HBs will
@@ -193,13 +193,26 @@ void run_tracker_application(unsigned int tracked_channel) {
 	  redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt = 0;
 	  }
 	} // for
+
+	// while the background update LEDs and check our ordinal
+	// An invalid ordinal indicates a software bug.
+	if (!redundancy_info.validateMyOrdinal()) {
+	  std::cerr << "Ordinal Failure: "
+		    << redundancy_info.getMyOrdinal() 
+		    << " " << redundancy_info.getMyGuid()
+		    << std::endl;
+	  state = ERROR;
+	}
 	
 	break;
 	
       case SHUT_DOWN:
+	std::cout << "\nSTATE: SHUT DOWN" << std::endl;	
+	application::shutdown_requested = true;
 	break;
 	
       case ERROR: // detectable error state
+	std::cout << "\nSTATE: ERROR" << std::endl;	
 	// print message/red light LEDs and SHUT DOWN
 	state=SHUT_DOWN;
 	break;

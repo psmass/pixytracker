@@ -70,9 +70,22 @@ namespace MODULE
     ~RedundancyInfo(void){}
 
     int getMyOrdinal(void) {return this->my_ordinal;};
-    rti::core::Guid getMyGuid(void) {
-      return this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->guid;}
+    bool validateMyOrdinal(void) {
+      bool verified {false};
+      for (int i=0; i<this->number_of_trackers; i++) {
+	if ((this->ordered_array_tracker_state_ptrs[i]->guid ==
+	     this->my_guid) && (i+1 == this->my_ordinal)) {
+	  verified = true;
+	  break;
+	}
+      }
+      return verified;
+    }
+	   
+    rti::core::Guid getMyGuid(void) {return this->my_guid;}
+    void setMyGuid(rti::core::Guid guid) {this->my_guid = guid;}
     rti::core::Guid getNullGuid(void) { return this->ff_guid; }
+    
     int getMyRollStrength(void);
     void sortSaveGuids(void);
     int numberOfTrackers(void) {return this->number_of_trackers;}
@@ -122,13 +135,31 @@ namespace MODULE
 	this->number_of_votes_in = 1;  // init val - our own tracker
     }
 
-    int my_ordinal {1}; // ordinals of trackers are 1,2,3 and index the ordered * array
+    rti::core::Guid my_guid; // Save my own guid separately to validate ordinal
+                             // my_guid = HB Writer instance handle - see HB wtr C'tor
     int number_of_trackers {1};
     int number_of_votes_in {1}; // 1 is our own internal vote
     rti::core::Guid ff_guid; // handy for future use
     rti::core::Guid primary, secondary, tertiary;
     TrackerState array_tracker_states[3];
-    TrackerState* ordered_array_tracker_state_ptrs[3];
+    
+    // The ordered_array_tracker_state_ptrs is always kept ordered
+    // based on guid of each tracker (smallest to largest).
+    // The ordinal is used to index into the ordered tracker array as an
+    // optimization to get my tracker state info.
+    // The ordinal, is also used to identify each tracker unit via LEDs
+    // (especially when reporting other failed trackers). The ordinal is
+    // adjusted as trackers come and go.
+    // The ordinal is independent of roll. Initially they will correlate
+    // since the voting algorithm initially assigns roll to tracker based
+    // on ordinal. But once any tracker fails, a tracker may be promoted
+    // and it's ordinal changed. A new tracker coming in to a running
+    // system will not take over as primary even if it has the lowest guids
+    // (Ordinal of 1). The existing Primary will remain Primary (avoiding
+    // oscillation) independent of it's ordinal as the ordered array is
+    // resorted
+    int my_ordinal {1}; // ordinals of trackers are 1,2,3 and index the ordered * array
+    TrackerState* ordered_array_tracker_state_ptrs[3]; 
   };
     
   class ServoWtr : public Writer {

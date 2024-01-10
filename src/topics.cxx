@@ -272,18 +272,18 @@ namespace MODULE
     const dds::core::InstanceHandle handle=this->getMyDataWriter()->instance_handle();
     //std::cout << "INSTANCE HANDLE: " << handle << std::endl;
 
-    // initially all trackers place their guid in the [0] index prior to bubble sorting
-    // the ordered_array_tracker_state_ptrs[3]
-    this->my_redundancy_info_obj->getMyTrackerStatePtr()->guid  = convertToGuid(handle);
-    std::cout << "GUID Convert: "
-	      << this->my_redundancy_info_obj->getMyTrackerStatePtr()->guid
-	      << std::endl;
+    // initially all trackers place their own guid in the [0] index prior to
+    // bubble sorting the ordered_array_tracker_state_ptrs[3]
+    rti::core::Guid guid = convertToGuid(handle);
+    this->my_redundancy_info_obj->getMyTrackerStatePtr()->guid = guid;
+    this->my_redundancy_info_obj->setMyGuid(guid);
+    std::cout << "MY GUID: " << guid << std::endl;
     
     // get my guid and place it in the heartbeat sample (note it's actually already there
     // in the meta data, but we need to key on it so as to detect the HB Wtr instance
     // should it miss a deadline (i.e. fail)
     uint8_t iarr[16];
-    convertGuidToIArray(iarr, redundancy_info_obj->getMyGuid());
+    convertGuidToIArray(iarr, guid);
 
     std::vector<uint8_t> seq_values;
     for (int i=0; i<16; i++)
@@ -539,20 +539,20 @@ namespace MODULE
 
     rti::core::Guid this_guid, guid[3];
     bool tracker_voted {false};
-    
+
     // verify this tracker has not already voted (should be impossible)
     this_guid = this->extractGuid(data, "SourceHBwriterHandle");
     for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
       if (this_guid == \
-	  my_redundancy_info_obj->getTrackerState_ptr(i)->guid \
-	  && \
-	  my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted) {
-	tracker_voted = true;
+	  my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
+	if (my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted)
+	  tracker_voted = true;
+	else // if found guid and not voted, mark it as voted
+	  my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted = true;
 	break;
       }
     }
-
-    if (!tracker_voted) {
+    if (!tracker_voted) { // process vote 
       // first check the vote is consistent - all guids are different
       // for each roll.
       for (int l=0; l<my_redundancy_info_obj->numberOfTrackers(); l++) {	
@@ -563,7 +563,7 @@ namespace MODULE
 	      goto bad_vote;
        }
       
-      my_redundancy_info_obj->incVotesIn(); // mark this tracker as voted
+      my_redundancy_info_obj->incVotesIn(); //  inc total vote tally
       // go through and extact the vote Primary to Tertiary
       for (int roll_idx=0; roll_idx<my_redundancy_info_obj->numberOfTrackers(); roll_idx++) {
         // see who's Guid we are getting a vote for?
