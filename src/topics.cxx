@@ -289,7 +289,7 @@ namespace MODULE
     for (int i=0; i<16; i++)
       seq_values.push_back(iarr[i]);
     
-    this->getMyDataSample()->set_values("MyParticipantHandle", seq_values);
+    this->getMyDataSample()->set_values("MyHBwriterHandle", seq_values);
   }
   
     
@@ -311,7 +311,7 @@ namespace MODULE
   {
     // std::cout << "Received Heartbeat: GUID=";
 
-    std::vector<uint8_t> seq_values = data.get_values<uint8_t>("MyParticipantHandle");
+    std::vector<uint8_t> seq_values = data.get_values<uint8_t>("MyHBwriterHandle");
     
     uint8_t iarr[16];
     for (int i=15; i>=0; i--) {
@@ -354,7 +354,7 @@ namespace MODULE
 	     periodic, period)
   {
      this->my_redundancy_info_obj = redundancy_info_obj;
-     this->setSampleField("SourceParticipantHandle", redundancy_info_obj->getMyGuid());
+     this->setSampleField("SourceHBwriterHandle", redundancy_info_obj->getMyGuid());
      // initialize all vote samples to NULL guid (so we don't have to worry
      // about accessing an N/A field
      for (int i=0; i<3; i++) {
@@ -541,7 +541,7 @@ namespace MODULE
     bool tracker_voted {false};
     
     // verify this tracker has not already voted (should be impossible)
-    this_guid = this->extractGuid(data, "SourceParticipantHandle");
+    this_guid = this->extractGuid(data, "SourceHBwriterHandle");
     for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
       if (this_guid == \
 	  my_redundancy_info_obj->getTrackerState_ptr(i)->guid \

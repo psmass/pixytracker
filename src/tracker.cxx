@@ -65,8 +65,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 
     enum SM_States state = INITIALIZE;
     int ten_sec_cnt {0};    // initial worst case wait period to vote
-
-    int cycle_cnt {0}; // These two vars used to slow state printouts
+    int cycle_cnt {5}; // Used to slow state printouts, Print first state entry
 
     // used in SM to change ownership strengthor servo_writer  based on my roll vote
     dds::pub::qos::DataWriterQos writer_qos = servo_writer.getMyDataWriter().qos();
@@ -129,12 +128,16 @@ void run_tracker_application(unsigned int tracked_channel) {
       case VOTE:
 	// this state tranitions quickly once we vote and ensure one vote
 	std::cout << "\nSTATE: VOTING" << std::endl;
-	redundancy_info.clearVotes(); // allow everyone to vote
 	vote_wtr.vote(); // place my vote for Primary/Sec/Tertiary
 	state=WAIT_VOTES_IN;
+	cycle_cnt=5; // make sure we print the first entry to each state
 	break;
 
       case WAIT_VOTES_IN:
+	std::cout << "Votes In = " << redundancy_info.votesIn()
+		  << " Trackers =: " << redundancy_info.numberOfTrackers()
+		  << std::endl;
+
 	if (!(cycle_cnt++ %5)) {
 	  cycle_cnt = 1;
 	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
@@ -151,6 +154,10 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// or inconsistent trackers. Set Pixy_Servo_Strength based on
 	// results: PRIMARY 30, SECONDARY 20, TERTIARY 10
 	redundancy_info.assessVoteResults();
+	// clear voting immediatly after tally for next potential vote
+	// not in vote state, since votes are durable and may already
+	// be in upon restart.
+	redundancy_info.clearVotes(); 
 	redundancy_info.printSortedTrackers();
 
 	// change my ownership strength based on my roll.
@@ -179,8 +186,8 @@ void run_tracker_application(unsigned int tracked_channel) {
 		      << std::endl;
 	    // we need to drop this tracker and promote all lower trackers
 	    redundancy_info.lostTracker(i);
+	    state=VOTE;
 	    break;
-	    //state=VOTE;
 	  } else {
 	  // zero the count
 	  redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt = 0;

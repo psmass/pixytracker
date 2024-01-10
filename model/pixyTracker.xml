@@ -29,10 +29,10 @@
         <member name="profileEnabled" type="boolean" arrayDimensions="7"/>
       </struct>
       <struct name="TrackerHeartbeat" extensibility="appendable">
-        <member name="MyParticipantHandle" type="uint8" sequenceMaxLength="16" key="true"/>
+        <member name="MyHBwriterHandle" type="uint8" sequenceMaxLength="16" key="true"/>
       </struct>
       <struct name="VoteType" extensibility="appendable">
-        <member name="SourceParticipantHandle" type="uint8" sequenceMaxLength="16" key="true"/>
+        <member name="SourceHBwriterHandle" type="uint8" sequenceMaxLength="16" key="true"/>
         <member name="Primary" type="uint8" sequenceMaxLength="16"/>
         <member name="Secondary" type="uint8" sequenceMaxLength="16"/>
         <member name="Tertiary" type="uint8" sequenceMaxLength="16"/>
@@ -92,18 +92,19 @@
       </qos_profile>
       <qos_profile name="Exclusive">
         <datawriter_qos>
+          <deadline>
+            <!-- 100,000,000 ns = 100ms -->
+            <period>
+              <sec>0</sec>
+              <nanosec>100000000</nanosec>
+            </period>
+          </deadline>
           <ownership>
             <kind>EXCLUSIVE_OWNERSHIP_QOS</kind>
           </ownership>
           <ownership_strength>
             <value>1</value>
           </ownership_strength>
-	  <deadline> <!-- 100,000,000 ns = 100ms -->
-	    <period>
-	      <sec>0</sec>
-	      <nanosec>100000000</nanosec>
-	    </period>
-	  </deadline>
         </datawriter_qos>
       </qos_profile>
       <qos_profile name="Durable">

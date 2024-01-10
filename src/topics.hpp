@@ -79,6 +79,7 @@ namespace MODULE
     void incNumberOfTrackers(void) {this->number_of_trackers++;}
     void incVotesIn(void) {this->number_of_votes_in++;}
     int votesIn(void) {return this->number_of_votes_in;}
+    void clearVotesIn(void) {this->number_of_votes_in = 1;}
     void lostTracker(int tracker_ordinal);
     void assessVoteResults(void);
 
@@ -118,6 +119,7 @@ namespace MODULE
 	this->ordered_array_tracker_state_ptrs[tracker]->votes[1]=0;
 	this->ordered_array_tracker_state_ptrs[tracker]->votes[2]=0;
         this->ordered_array_tracker_state_ptrs[tracker]->Ivoted=0;
+	this->number_of_votes_in = 1;  // init val - our own tracker
     }
 
     int my_ordinal {1}; // ordinals of trackers are 1,2,3 and index the ordered * array
