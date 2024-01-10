@@ -203,9 +203,6 @@ namespace MODULE
       // assign the winning roll to this tracker
       this->ordered_array_tracker_state_ptrs[ord]->roll=roll_array[largest_roll_vote_idx];
     } // for ord
-    std::cout << "This Tracker was unanomously voted Roll: "
-	      << roll_string_map[this->ordered_array_tracker_state_ptrs[my_ordinal-1]->roll]
-	      << std::endl;
   };
 
      

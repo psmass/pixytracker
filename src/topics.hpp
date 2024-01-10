@@ -138,25 +138,27 @@ namespace MODULE
       // of these LEDs that is Red the corresponding tracker will be off and
       // can be deduced from the other redundant trackers Green Ordinal LED.
       //
-      if (this->array_tracker_states[0].roll == PRIMARY) {
-        std::cout << "Tracker Roll: Primary (Green)" << std::endl;
-      }
-      std::cout << " | ";
+      std::cout << "|  ORDINAL1  |  ORDINAL2  |  ORDINAL3  | PRIMARY |" << std::endl;
+      std::cout << "+------------+------------+------------+---------+" << std::endl;
+      std::cout << "|";
       
       for (int i=0; i<3; i++) {
-      
-	std::cout << "LED:" << i+1; // equivalent of LED position
 	if (this->ordered_array_tracker_state_ptrs[i]->state == FAILED) {
-	  std::cout << " - FAILED (Red) | ";
+	  std::cout << "FAILED (Red)|";
 	}
 	if (this->ordered_array_tracker_state_ptrs[i]->state == OPERATIONAL) {
 	  if (i+1 == this->my_ordinal) 
-	    std::cout << " -  OK (Grn)  | ";
+	    std::cout << "  OK (Grn)  |";
           else 
-            std::cout << "              |";
+            std::cout << "            |";
         }
       } // for
-      std::cout << std::endl;
+      if (this->array_tracker_states[0].roll == PRIMARY)
+        std::cout << "  GREEN  |" << std::endl;
+      else
+	 std::cout << "         |" << std::endl;
+  
+      std::cout << "+------------+------------+------------+---------+" << std::endl;
     }
       
       
