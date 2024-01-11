@@ -89,6 +89,8 @@ namespace MODULE
     int getMyRollStrength(void);
     void sortSaveGuids(void);
     int numberOfTrackers(void) {return this->number_of_trackers;}
+    bool isNewTracker(void) {return this->is_new_tracker;}
+    void setNewTracker(bool nt_true) {this->is_new_tracker=nt_true;}
     void incNumberOfTrackers(void) {this->number_of_trackers++;}
     void incVotesIn(void) {this->number_of_votes_in++;}
     int votesIn(void) {return this->number_of_votes_in;}
@@ -162,13 +164,12 @@ namespace MODULE
     }
       
       
-    
   private:
-    void clearVotesTracker(int tracker) {
-	this->ordered_array_tracker_state_ptrs[tracker]->votes[0]=0;
-	this->ordered_array_tracker_state_ptrs[tracker]->votes[1]=0;
-	this->ordered_array_tracker_state_ptrs[tracker]->votes[2]=0;
-        this->ordered_array_tracker_state_ptrs[tracker]->Ivoted=0;
+    void clearVotesTracker(int tracker_indx) {
+	this->ordered_array_tracker_state_ptrs[tracker_indx]->votes[0]=0;
+	this->ordered_array_tracker_state_ptrs[tracker_indx]->votes[1]=0;
+	this->ordered_array_tracker_state_ptrs[tracker_indx]->votes[2]=0;
+        this->ordered_array_tracker_state_ptrs[tracker_indx]->Ivoted=0;
 	this->number_of_votes_in = 1;  // init val - our own tracker
     }
 
@@ -179,6 +180,10 @@ namespace MODULE
     rti::core::Guid ff_guid; // handy for future use
     rti::core::Guid primary, secondary, tertiary;
     TrackerState array_tracker_states[3];
+
+    // Used to ensure voting is correctly filled out. Set true in HB Reader if
+    // new tracker is detected. Set false in loss of a tracker.
+    bool is_new_tracker {true}; 
     
     // The ordered_array_tracker_state_ptrs is always kept ordered
     // based on guid of each tracker (smallest to largest).
