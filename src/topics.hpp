@@ -46,9 +46,12 @@ namespace MODULE
     allow the main program to set data and write at will.
 
 */
+
+  
   
   enum State {FAILED = 0, OPERATIONAL};
   enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
+  enum SM_States {INITIALIZE, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
   
   struct TrackerState {
     rti::core::Guid guid;
@@ -81,6 +84,9 @@ namespace MODULE
       }
       return verified;
     }
+
+    enum SM_States smState(){return this->sm_state;}
+    void setSM_State (enum SM_States my_state) {this->sm_state = my_state;}
 	   
     rti::core::Guid getMyGuid(void) {return this->my_guid;}
     void setMyGuid(rti::core::Guid guid) {this->my_guid = guid;}
@@ -88,13 +94,30 @@ namespace MODULE
     
     int getMyRollStrength(void);
     void sortSaveGuids(void);
+    
     int numberOfTrackers(void) {return this->number_of_trackers;}
-    bool isNewTracker(void) {return this->is_new_tracker;}
-    void setNewTracker(bool nt_true) {this->is_new_tracker=nt_true;}
     void incNumberOfTrackers(void) {this->number_of_trackers++;}
+    void setNumberOfTrackers(int nt) {this->number_of_trackers=nt;} 
+
+    bool isNewTracker(void) {return this->is_new_tracker;}
+    void setNewTracker(bool nt_bool) {this->is_new_tracker=nt_bool;}
+    bool isLateJoiner(void) {return this->late_joiner;}
+    void setLateJoiner(bool lj_bool) {this->late_joiner=lj_bool;}
+
+    
+    bool voteRdrLocked(void) { // checks and sets
+      if (this->vote_reader_lock++ > 1)
+	return true;
+      else
+	return false;
+    }
+    void clrVoteRdrLock(void) {this->vote_reader_lock = 0; }
+
     void incVotesIn(void) {this->number_of_votes_in++;}
+    void setVotesIn(int votes) { this->number_of_votes_in = votes;}
     int votesIn(void) {return this->number_of_votes_in;}
     void clearVotesIn(void) {this->number_of_votes_in = 1;}
+    
     void lostTracker(int tracker_ordinal);
     void assessVoteResults(void);
 
@@ -173,6 +196,8 @@ namespace MODULE
 	this->number_of_votes_in = 1;  // init val - our own tracker
     }
 
+    enum SM_States sm_state {INITIALIZE}; // keep this trackers State Machine State
+
     rti::core::Guid my_guid; // Save my own guid separately to validate ordinal
                              // my_guid = HB Writer instance handle - see HB wtr C'tor
     int number_of_trackers {1};
@@ -183,7 +208,12 @@ namespace MODULE
 
     // Used to ensure voting is correctly filled out. Set true in HB Reader if
     // new tracker is detected. Set false in loss of a tracker.
-    bool is_new_tracker {true}; 
+    bool is_new_tracker {true};
+
+    // indicates this tracker is a late joiner and should not vote
+    // and should silently join at next available roll
+    bool late_joiner {false};
+    int vote_reader_lock {0}; // used to block a 2nd late joiner vote
     
     // The ordered_array_tracker_state_ptrs is always kept ordered
     // based on guid of each tracker (smallest to largest).

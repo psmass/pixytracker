@@ -33,6 +33,7 @@
       </struct>
       <struct name="VoteType" extensibility="appendable">
         <member name="SourceHBwriterHandle" type="uint8" sequenceMaxLength="16" key="true"/>
+        <member name="NumberOfTrackers" type="int32"/>
         <member name="Primary" type="uint8" sequenceMaxLength="16"/>
         <member name="Secondary" type="uint8" sequenceMaxLength="16"/>
         <member name="Tertiary" type="uint8" sequenceMaxLength="16"/>

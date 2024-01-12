@@ -28,8 +28,6 @@ namespace MODULE
   dds::core::Duration DEFAULT_PERIOD {0,100000000}; // 100 ms default HB writer rate
   #define TEN_SEC 40 // main loop clock tick is 250ms. 40 = ten sec
   
-  enum SM_States {INITIALIZE, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
-  
 void run_tracker_application(unsigned int tracked_channel) {
    // Create the participant
     dds::core::QosProvider qos_provider({ MODULE::QOS_FILE });
@@ -63,7 +61,7 @@ void run_tracker_application(unsigned int tracked_channel) {
     DefaultWriterListener * listener = new DefaultWriterListener; 
     servo_writer.getMyDataWriter().listener (listener, dds::core::status::StatusMask::all());
 
-    enum SM_States state = INITIALIZE;
+
     int ten_sec_cnt {0};    // initial worst case wait period to vote
     int cycle_cnt {5}; // Used to slow state printouts, Print first state entry
 
@@ -103,7 +101,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       // detected trackers (i.e. loss of heartbeat or new tracker heartbeat),
       // or it may SHUT_DOWN if directed.
       //
-      switch (state) {	
+      switch (redundancy_info.smState()) {	
 	// Note:  The sleep in INITIALIZE ensures we wait at least 1 sec after
 	//        all the trackers, if all three trackers are up, and makes a one time
 	//        worst case 10sec startup.
@@ -117,19 +115,28 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
 	if (!(cycle_cnt++ %5)) {
 	  cycle_cnt=1;
-	  std::cout << ":" << std::flush;
+	  std::cout << redundancy_info.numberOfTrackers() << " " << std::flush;
 	}
 	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==TEN_SEC) {
-	  rti::util::sleep(dds::core::Duration(1)); // extra sec to register HBs
-	  state=VOTE;
+	  redundancy_info.setSM_State(VOTE);
 	};
 	break;
-	
+
       case VOTE:
+	// delay to allow all trackers to see the 3 trackers and leave this state
+	// a tracker seeing another trackers vote while in INITIALIZE is viewed as
+	// a late joiner.
+	rti::util::sleep(dds::core::Duration(1)); 
 	// this state tranitions quickly once we vote and ensure one vote
 	std::cout << "\nSTATE: VOTING" << std::endl;
-	vote_wtr.vote(); // place my vote for Primary/Sec/Tertiary
-	state=WAIT_VOTES_IN;
+	if (redundancy_info.isLateJoiner()) {// don't vote, silently join
+	  std::cout << "Late Joiner" << std::endl;
+	  	redundancy_info.setSM_State(VOTE_RESULTS);
+	}
+	else { // place my vote for Primary/Sec/Tertiary
+	  vote_wtr.vote(); 
+	  redundancy_info.setSM_State(WAIT_VOTES_IN);
+	}
 	cycle_cnt=5; // make sure we print the first entry to each state
 	break;
 
@@ -137,11 +144,15 @@ void run_tracker_application(unsigned int tracked_channel) {
 	if (!(cycle_cnt++ %5)) {
 	  cycle_cnt = 1;
 	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
+	  std::cout << redundancy_info.votesIn()
+		    << " "
+		    << redundancy_info.numberOfTrackers()
+		    << std::endl;
 	};
 	// wait for all votes to be in, if < 3 the timing is dependent
 	// upon delays from different trackers starting.
         if (redundancy_info.votesIn() == redundancy_info.numberOfTrackers()) 
-	  state=VOTE_RESULTS;
+	  redundancy_info.setSM_State(VOTE_RESULTS);
 	break;
 
       case VOTE_RESULTS: 
@@ -155,7 +166,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// be in upon restart.
 	redundancy_info.clearVotes(); 
 	//redundancy_info.printSortedTrackers();
-	redundancy_info.printMyState();
 
 	// change my ownership strength based on my roll.
         ownership_strength_value = redundancy_info.getMyRollStrength();
@@ -165,16 +175,22 @@ void run_tracker_application(unsigned int tracked_channel) {
 	servo_writer.enable(); // enable after we've set the strength
 
 	//redundancy_info.printVoteResults();
-	state=STEADY_STATE;
+	redundancy_info.setSM_State(STEADY_STATE);
 	break;
 	
       case STEADY_STATE:
+	// print the first time we enter state or if new tracker
+	if (redundancy_info.isNewTracker() or cycle_cnt>0) { 
+	  redundancy_info.printMyState();
+	  redundancy_info.setNewTracker(false);
+	  cycle_cnt = 0;
+	}
+     
 	servo_writer.printGimbalPosition();	  
-        //std::cout << "." << std::flush;
-	// check for hb deadline missed from a tracker. The SM runs at 250ms
-	// the HB run at 100ms. The SM will clear the count, receive HBs will
-	// increment the count so a 0 will indicate a deadline miss.
-	// note: ignore our own count since we don't get our own HBs
+	// Check for lost tracker - hb deadline missed from a tracker. The SM
+	// runs at 250ms the HB run at 100ms. The SM will clear the count,
+	// receive HBs will increment the count so a 0 will indicate a deadline
+	// miss.  note: ignore our own count since we don't get our own HBs
 	for (int i=0; i<redundancy_info.numberOfTrackers(); i++){
 	  if ((i !=redundancy_info.getMyOrdinal()-1) && \
 	      (redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt == 0)) {
@@ -183,7 +199,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 		      << std::endl;
 	    // we need to drop this tracker and promote all lower trackers
 	    redundancy_info.lostTracker(i);
-	    state=VOTE;
+	    redundancy_info.setSM_State(VOTE);
 	    break;
 	  } else {
 	  // zero the count
@@ -191,6 +207,11 @@ void run_tracker_application(unsigned int tracked_channel) {
 	  }
 	} // for
 
+	// Discovered a late joining Tracker, bring in silently at next
+	// available roll {Secondary, Tertiary}
+	if (redundancy_info.isNewTracker()) {
+	  ;
+	}
 	// while the background update LEDs and check our ordinal
 	// An invalid ordinal indicates a software bug.
 	if (!redundancy_info.validateMyOrdinal()) {
@@ -198,7 +219,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 		    << redundancy_info.getMyOrdinal() 
 		    << " " << redundancy_info.getMyGuid()
 		    << std::endl;
-	  state = ERROR;
+	  redundancy_info.setSM_State(ERROR);
 	}
 	
 	break;
@@ -211,7 +232,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       case ERROR: // detectable error state
 	std::cout << "\nSTATE: ERROR" << std::endl;	
 	// print message/red light LEDs and SHUT DOWN
-	state=SHUT_DOWN;
+	redundancy_info.setSM_State(SHUT_DOWN);
 	break;
 	
       default:
