@@ -48,10 +48,10 @@ namespace MODULE
 */
 
   
-  
+  #define TEN_SEC 40 // main loop clock tick is 250ms. 40 = ten sec  
   enum State {FAILED = 0, OPERATIONAL};
   enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
-  enum SM_States {INITIALIZE, PREVOTE, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
+  enum SM_States {INITIALIZE, POSTINIT, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
   
   struct TrackerState {
     rti::core::Guid guid;
@@ -108,14 +108,15 @@ namespace MODULE
     bool isLateJoiner(void) {return this->late_joiner;}
     void setLateJoiner(bool lj_bool) {this->late_joiner=lj_bool;}
 
-    
-    bool voteRdrLocked(void) { // checks and sets
-      if (this->vote_reader_lock++ > 1)
+    // Used to track 10 sec from last heartbeat in state INITIALIZE
+    bool tenSecCount(void) {
+      if (--this->ten_sec_count==0)
 	return true;
       else
 	return false;
-    }
-    void clrVoteRdrLock(void) {this->vote_reader_lock = 0; }
+    };
+
+    void resetTenSecCount(void) { this->ten_sec_count = TEN_SEC; }
 
     void incVotesIn(void) {this->number_of_votes_in++;}
     void setVotesIn(int votes) { this->number_of_votes_in = votes;}
@@ -203,6 +204,7 @@ namespace MODULE
     }
 
     enum SM_States sm_state {INITIALIZE}; // keep this trackers State Machine State
+    int ten_sec_count {TEN_SEC}; // ten sec count based on main loop period
 
     rti::core::Guid my_guid; // Save my own guid separately to validate ordinal
                              // my_guid = HB Writer instance handle - see HB wtr C'tor
@@ -219,7 +221,6 @@ namespace MODULE
     // indicates this tracker is a late joiner and should not vote
     // and should silently join at next available roll
     bool late_joiner {false};
-    int vote_reader_lock {0}; // used to block a 2nd late joiner vote
     int votes_expected {3}; // changes by late joiners 
     
     // The ordered_array_tracker_state_ptrs is always kept ordered

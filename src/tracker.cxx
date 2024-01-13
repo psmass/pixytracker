@@ -25,8 +25,8 @@
 namespace MODULE
 {
   #define PERIODIC true
-  dds::core::Duration DEFAULT_PERIOD {0,100000000}; // 100 ms default HB writer rate
-  #define TEN_SEC 40 // main loop clock tick is 250ms. 40 = ten sec
+  dds::core::Duration DEFAULT_PERIOD  {0,100000000}; // 100 ms default HB writer rate
+  dds::core::Duration MAINLOOP_PERIOD {0,250000000}; // 250 ms mainloop ensures 2 hbs per
   
 void run_tracker_application(unsigned int tracked_channel) {
    // Create the participant
@@ -75,7 +75,8 @@ void run_tracker_application(unsigned int tracked_channel) {
       //
       // This block describes a state machine implemented int the main thread
       // (here below) that will have the following states:
-      // INITIALIZE, VOTE, WAIT_FOR_VOTES, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN 
+      // INITIALIZE, POSTINIT, VOTE, WAIT_FOR_VOTES, VOTE_RESULTS, STEADY_STATE,
+      // SHUT_DOWN, ERROR.
       //
       // The state machine will INITIALIZE to wait 10 sec for 3 trackers or
       // 3 trackers which ever comes first and then proceed to VOTE state.
@@ -113,23 +114,26 @@ void run_tracker_application(unsigned int tracked_channel) {
 	//       
       case INITIALIZE:
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
+	// after a new tracker hb is detected (still waiting for more trackers
+	// if less than 3. This ensures that all trackers leave INITIALIZE
+	// within ~100ms of eachother. Important, since any tracker still in
+	// INITIALIZE or POSTINIT when a vote comes in is considered a late
+	// joiner.
 	//if (!(cycle_cnt++ %5)) {
 	//  cycle_cnt=1;
 	  std::cout << redundancy_info.numberOfTrackers() << ":" << std::flush;
 	  //}
 	  if (redundancy_info.numberOfTrackers()==redundancy_info.votesExpected() \
-	    || ten_sec_cnt==TEN_SEC) {
-	    redundancy_info.setSM_State(PREVOTE);
+	      || redundancy_info.tenSecCount()) {
+	    redundancy_info.setSM_State(POSTINIT);
 	};
 	break;
 
-      case PREVOTE:
-	// Allows a late joiner to process durable votes in case heartbeats
-	// came in quickly and moved us out of INITIALIZE
-	std::cout << "\nSTATE: PREVOTE" << std::endl;
+      case POSTINIT:
+	// Pauses beifly to ensure a late joiner has process durable votes first
+	// in the case heartbeats came more quickly and moved us out of INITIALIZE
+	std::cout << "\nSTATE: POSTINIT" << std::endl;
 	
-	// Delay to ensure a late joiner has the chance process durable votes
-	// and set as late joiner, not vote and go to assessing votes
 	rti::util::sleep(dds::core::Duration(1));
 
 	if (redundancy_info.isLateJoiner()) { // skip vote and silently rejoin
@@ -143,6 +147,13 @@ void run_tracker_application(unsigned int tracked_channel) {
       case VOTE:
 	// this state tranitions quickly once we vote and ensure one vote
 	std::cout << "\nSTATE: VOTING" << std::endl;
+	
+	// For first time system up, all the trackers will see the other
+	// two trackers heartbeats or 10sec expires after a new HB.
+	// They should be in VOTE steat within 100ms of eachother. This
+	// skew (should they vote with out delay) could allow a tracker to see
+	// itself as a late joiner.
+	rti::util::sleep(dds::core::Duration(1));
 
 	vote_wtr.vote(); 
 	redundancy_info.setSM_State(WAIT_VOTES_IN);
@@ -248,7 +259,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       default:
 	;
       } // switch
-      rti::util::sleep(dds::core::Duration(0,250000000));
+      rti::util::sleep(MAINLOOP_PERIOD);
       ten_sec_cnt++;
     }
 

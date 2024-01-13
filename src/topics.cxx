@@ -333,6 +333,7 @@ namespace MODULE
     // tracker array populate it and sort/resort.
     if  (!duplicate && (this->my_redundancy_info_obj->numberOfTrackers() < 3)) {
       this->my_redundancy_info_obj->incNumberOfTrackers();
+      this->my_redundancy_info_obj->resetTenSecCount(); 
       for (int i=0; i<3; i++)
 	if (this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid == \
 	    this->my_redundancy_info_obj->getNullGuid()) {
@@ -523,14 +524,6 @@ namespace MODULE
 
     int number_voted_trackers;
 
-    // Only process one durable vote. Tthis code is not multi-entrant and
-    // we don't need the second consistent vote.
-    //  
-    if (my_redundancy_info_obj->voteRdrLocked()) { // needs to be atomic
-      std::cout << "Vote Reader Locked" << std::endl;
-      goto done;
-    }
-
     tracker_voted = false;
     number_voted_trackers  = (int)data.value<int32_t>("NumberOfTrackers");
 
@@ -569,7 +562,7 @@ namespace MODULE
       //   so tally each vote and vote once all trackers we learned about
       //   during init state are in.
       if (my_redundancy_info_obj->smState()==INITIALIZE || \
-	  my_redundancy_info_obj->smState()==PREVOTE) {
+	  my_redundancy_info_obj->smState()==POSTINIT) {
 
 	for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++) {
 	  // see who's Guid we are getting a vote for?
@@ -619,7 +612,7 @@ namespace MODULE
 	} // for roll_idx;
       }
     } // if tracker did not vote
-    my_redundancy_info_obj->clrVoteRdrLock();
+
   done:
     return;
     
