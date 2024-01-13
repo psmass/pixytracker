@@ -51,7 +51,7 @@ namespace MODULE
   
   enum State {FAILED = 0, OPERATIONAL};
   enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
-  enum SM_States {INITIALIZE, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
+  enum SM_States {INITIALIZE, PREVOTE, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
   
   struct TrackerState {
     rti::core::Guid guid;
@@ -96,8 +96,12 @@ namespace MODULE
     void sortSaveGuids(void);
     
     int numberOfTrackers(void) {return this->number_of_trackers;}
-    void incNumberOfTrackers(void) {this->number_of_trackers++;}
-    void setNumberOfTrackers(int nt) {this->number_of_trackers=nt;} 
+    // inc Trackers only by receiving new Heartbeats to avoid CERR
+    void incNumberOfTrackers(void) {
+      if (this->number_of_trackers == 3)
+	std::cerr << "ERROR: Attempted inc to 4 Trackers" << std::endl;
+      else this->number_of_trackers++;
+    }
 
     bool isNewTracker(void) {return this->is_new_tracker;}
     void setNewTracker(bool nt_bool) {this->is_new_tracker=nt_bool;}
@@ -116,7 +120,9 @@ namespace MODULE
     void incVotesIn(void) {this->number_of_votes_in++;}
     void setVotesIn(int votes) { this->number_of_votes_in = votes;}
     int votesIn(void) {return this->number_of_votes_in;}
-    void clearVotesIn(void) {this->number_of_votes_in = 1;}
+    void clearVotesIn(void) {this->number_of_votes_in = 1;} // our vote
+    void setVotesExpected(int ve) {this->votes_expected = ve;}
+    int votesExpected(void) {return this->votes_expected;}
     
     void lostTracker(int tracker_ordinal);
     void assessVoteResults(void);
@@ -214,6 +220,7 @@ namespace MODULE
     // and should silently join at next available roll
     bool late_joiner {false};
     int vote_reader_lock {0}; // used to block a 2nd late joiner vote
+    int votes_expected {3}; // changes by late joiners 
     
     // The ordered_array_tracker_state_ptrs is always kept ordered
     // based on guid of each tracker (smallest to largest).

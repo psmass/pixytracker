@@ -13,6 +13,7 @@
 #include <dds/dds.hpp>
 #include "topics.hpp"
 #include "gimbal.hpp"
+#include <rti/util/util.hpp> // for sleep
 
 namespace MODULE
 {
@@ -331,6 +332,7 @@ namespace MODULE
     // if new tracker we have available tracker space, find available slot in
     // tracker array populate it and sort/resort.
     if  (!duplicate && (this->my_redundancy_info_obj->numberOfTrackers() < 3)) {
+      this->my_redundancy_info_obj->incNumberOfTrackers();
       for (int i=0; i<3; i++)
 	if (this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid == \
 	    this->my_redundancy_info_obj->getNullGuid()) {
@@ -341,7 +343,6 @@ namespace MODULE
 	  this->my_redundancy_info_obj->setNewTracker(true);
 	  break;
 	} 
-      this->my_redundancy_info_obj->incNumberOfTrackers();
       // std::cout << hb_guid << std::endl;
     }	   
   };
@@ -556,15 +557,19 @@ namespace MODULE
 	      goto bad_vote;
       }
       // Votes are durable, so if we get a vote in the INITIALIZE state,
-      // we receive votes in one of two states:
+      // we receive votes in one of up to 3 states:
       //   INITIALIZE - indicates the system has been running, other trackers
       //   (1 or 2 of them) have voted and we are a late joiners.
       //   In this case we should simply make our view of received votes based
       //   on the first vote we receive
+      //   VOTE - heartbeats and durable votes can race eachother. This covers
+      //   the case where heartbeats beat durable votes and a late joiner
+      //    quickly went to VOTE state
       //   WAIT_VOTES_IN - indicates this tracker came up with the system,
       //   so tally each vote and vote once all trackers we learned about
       //   during init state are in.
-      if (my_redundancy_info_obj->smState()==INITIALIZE) {
+      if (my_redundancy_info_obj->smState()==INITIALIZE || \
+	  my_redundancy_info_obj->smState()==PREVOTE) {
 
 	for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++) {
 	  // see who's Guid we are getting a vote for?
@@ -596,9 +601,8 @@ namespace MODULE
 	  votes[number_voted_trackers] = number_voted_trackers+1;
 	// no need to wait for next vote or 10 sec if the system had been
 	// operational as we are only adding this tracker back.
-	my_redundancy_info_obj->setVotesIn(3);
-	my_redundancy_info_obj->setLateJoiner(true);
-	my_redundancy_info_obj->setNumberOfTrackers(number_voted_trackers+1);
+	my_redundancy_info_obj->setLateJoiner(true);	
+	my_redundancy_info_obj->setVotesExpected(number_voted_trackers+1);
 
       } else { // the system was not previously running
         std::cout << "System just up process new vote - " << std::endl;

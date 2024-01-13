@@ -113,30 +113,40 @@ void run_tracker_application(unsigned int tracked_channel) {
 	//       
       case INITIALIZE:
 	// we stay here waiting for up to 3 trackers or upto 10 seconds
-	if (!(cycle_cnt++ %5)) {
-	  cycle_cnt=1;
-	  std::cout << redundancy_info.numberOfTrackers() << " " << std::flush;
-	}
-	if (redundancy_info.numberOfTrackers()==3 || ten_sec_cnt==TEN_SEC) {
-	  redundancy_info.setSM_State(VOTE);
+	//if (!(cycle_cnt++ %5)) {
+	//  cycle_cnt=1;
+	  std::cout << redundancy_info.numberOfTrackers() << ":" << std::flush;
+	  //}
+	  if (redundancy_info.numberOfTrackers()==redundancy_info.votesExpected() \
+	    || ten_sec_cnt==TEN_SEC) {
+	    redundancy_info.setSM_State(PREVOTE);
 	};
 	break;
 
+      case PREVOTE:
+	// Allows a late joiner to process durable votes in case heartbeats
+	// came in quickly and moved us out of INITIALIZE
+	std::cout << "\nSTATE: PREVOTE" << std::endl;
+	
+	// Delay to ensure a late joiner has the chance process durable votes
+	// and set as late joiner, not vote and go to assessing votes
+	rti::util::sleep(dds::core::Duration(1));
+
+	if (redundancy_info.isLateJoiner()) { // skip vote and silently rejoin
+	  std::cout << "Late Joiner" << std::endl;
+	  redundancy_info.setSM_State(VOTE_RESULTS);
+	} else
+	    redundancy_info.setSM_State(VOTE);	  
+	
+	break;
+
       case VOTE:
-	// delay to allow all trackers to see the 3 trackers and leave this state
-	// a tracker seeing another trackers vote while in INITIALIZE is viewed as
-	// a late joiner.
-	rti::util::sleep(dds::core::Duration(1)); 
 	// this state tranitions quickly once we vote and ensure one vote
 	std::cout << "\nSTATE: VOTING" << std::endl;
-	if (redundancy_info.isLateJoiner()) {// don't vote, silently join
-	  std::cout << "Late Joiner" << std::endl;
-	  	redundancy_info.setSM_State(VOTE_RESULTS);
-	}
-	else { // place my vote for Primary/Sec/Tertiary
-	  vote_wtr.vote(); 
-	  redundancy_info.setSM_State(WAIT_VOTES_IN);
-	}
+
+	vote_wtr.vote(); 
+	redundancy_info.setSM_State(WAIT_VOTES_IN);
+	  
 	cycle_cnt=5; // make sure we print the first entry to each state
 	break;
 
