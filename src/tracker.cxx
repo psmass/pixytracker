@@ -53,6 +53,11 @@ void run_tracker_application(unsigned int tracked_channel) {
     shapes_reader.runThread();
     tracker_hb_rdr.runThread();
     tracker_hb_wtr.runThread();
+
+    // If a current running system, ensure hb of current running trackers
+    // are Registered prior to receiving any durable votes - votes are
+    // checked to verify they are cast for known trackers.
+    rti::util::sleep(dds::core::Duration(1));
     vote_rdr.runThread();
 
     // *** START WRITER LISTENERS or MONITOR THREADS (This step Optional)
@@ -136,12 +141,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	
 	rti::util::sleep(dds::core::Duration(1));
 
-	if (redundancy_info.isLateJoiner()) { // skip vote and silently rejoin
-	  std::cout << "Late Joiner" << std::endl;
-	  redundancy_info.setSM_State(VOTE_RESULTS);
-	} else
-	    redundancy_info.setSM_State(VOTE);	  
-	
+        redundancy_info.setSM_State(VOTE);	  
 	break;
 
       case VOTE:
@@ -150,7 +150,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	
 	// For first time system up, all the trackers will see the other
 	// two trackers heartbeats or 10sec expires after a new HB.
-	// They should be in VOTE steat within 100ms of eachother. This
+	// They should be in VOTE state within 100ms of eachother. This
 	// skew (should they vote with out delay) could allow a tracker to see
 	// itself as a late joiner.
 	rti::util::sleep(dds::core::Duration(1));
@@ -197,36 +197,41 @@ void run_tracker_application(unsigned int tracked_channel) {
 
 	//redundancy_info.printVoteResults();
 	redundancy_info.setSM_State(STEADY_STATE);
+	cycle_cnt=0; // next cycle triggers a print upon entry to STEADY_STATE
 	break;
 	
       case STEADY_STATE:
 	// print the first time we enter state or if new tracker
-	if (redundancy_info.isNewTracker() or cycle_cnt>0) { 
+	if (redundancy_info.isNewTracker() or cycle_cnt==0) {
+	  std::cout << "STATE: STEADY_STATE" << std::endl;
 	  redundancy_info.printMyState();
 	  redundancy_info.setNewTracker(false);
-	  cycle_cnt = 0;
 	}
      
 	servo_writer.printGimbalPosition();	  
-	// Check for lost tracker - hb deadline missed from a tracker. The SM
-	// runs at 250ms the HB run at 100ms. The SM will clear the count,
-	// receive HBs will increment the count so a 0 will indicate a deadline
-	// miss.  note: ignore our own count since we don't get our own HBs
-	for (int i=0; i<redundancy_info.numberOfTrackers(); i++){
-	  if ((i !=redundancy_info.getMyOrdinal()-1) && \
-	      (redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt == 0)) {
-	    std::cout << "\nFAULT DEADLINE MISS -  Tracker: "
-		      << redundancy_info.getTrackerState_ptr(i)->guid
-		      << std::endl;
-	    // we need to drop this tracker and promote all lower trackers
-	    redundancy_info.lostTracker(i);
-	    redundancy_info.setSM_State(VOTE);
-	    break;
-	  } else {
-	  // zero the count
-	  redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt = 0;
-	  }
-	} // for
+	// Check for lost tracker every one sec: HB deadline missed from a
+	// tracker is 100ms (within 100ms the secondary's samples will be used
+	// by DDS ownership deadline miss.) This logic is to consider formal
+	// revote for a new primary - i.e. promoting the secondary. Votine time
+	// is independent of the Secondary's samples being used and can be
+	// done is a less urgent manner. 
+	//   
+	if (cycle_cnt++ %ONE_SEC) // assess revote every one sec
+	  for (int i=0; i<redundancy_info.numberOfTrackers(); i++){
+	    if ((i !=redundancy_info.getMyOrdinal()-1) && \
+		(redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt == 0)) {
+	      std::cout << "\nFAULT DEADLINE MISS -  Tracker: "
+			<< redundancy_info.getTrackerState_ptr(i)->guid
+			<< std::endl;
+	      // we need to drop this tracker and promote all lower trackers
+	      redundancy_info.lostTracker(i);
+	      redundancy_info.setSM_State(VOTE);
+	      break;
+	    } else {
+	      // zero the count
+	      redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt = 0;
+	    }
+	  } // for
 
 	// Discovered a late joining Tracker, bring in silently at next
 	// available roll {Secondary, Tertiary}

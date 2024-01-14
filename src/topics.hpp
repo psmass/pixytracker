@@ -48,10 +48,12 @@ namespace MODULE
 */
 
   
-  #define TEN_SEC 40 // main loop clock tick is 250ms. 40 = ten sec  
+  #define TEN_SEC 40 // main loop clock tick is 250ms. 40 = ten sec
+  #define ONE_SEC 4
   enum State {FAILED = 0, OPERATIONAL};
   enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
-  enum SM_States {INITIALIZE, POSTINIT, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, SHUT_DOWN, ERROR};
+  enum SM_States {INITIALIZE, POSTINIT, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, \
+		  SHUT_DOWN, ERROR};
   
   struct TrackerState {
     rti::core::Guid guid;
@@ -107,7 +109,7 @@ namespace MODULE
     void setNewTracker(bool nt_bool) {this->is_new_tracker=nt_bool;}
     bool isLateJoiner(void) {return this->late_joiner;}
     void setLateJoiner(bool lj_bool) {this->late_joiner=lj_bool;}
-
+    
     // Used to track 10 sec from last heartbeat in state INITIALIZE
     bool tenSecCount(void) {
       if (--this->ten_sec_count==0)

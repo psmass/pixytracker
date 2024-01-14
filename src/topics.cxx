@@ -19,8 +19,10 @@ namespace MODULE
 {
 
   // Array to Index map enum Roll
-  enum Roll roll_array[5]{PRIMARY, SECONDARY, TERTIARY, UNASSIGNED, UNASSIGNED};
+  enum Roll roll_array[4]{PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
   std::string roll_string_map[4] {"Primary", "Secondary", "Tertiary", "Not Voted Yet"};
+  std::string state_string_map[8]{"INITIALIZE", "POSTINIT", "VOTE", "WAIT_VOTES_IN",\
+      "VOTE_RESULTS", "STEADY_STATE", "SHUT_DOWN", "ERROR"};
   
   /* Helper functions to covert between InstanceHandles, GUIDs and arrays
      Instances is what I can access, Guids for math, arrays to place as
@@ -126,16 +128,12 @@ namespace MODULE
     // need to shuffle them forward in the ordered_array_tracker_state_ptrs, and
     // promote thier roll.
     // Note: There must be at least 2 trackers as we are 1 and we lost 1.
-    
-    // promote all remaining trackers with lower rolls than the one lost
-    for (int i=0; i<this->number_of_trackers; i++) {
-      // enum Primary 0, Secondary 1, Tertiary 3 
-      if (this->ordered_array_tracker_state_ptrs[tracker_indx]->roll <
-	  this->ordered_array_tracker_state_ptrs[i]->roll)
-	this->ordered_array_tracker_state_ptrs[i]->roll =\
-	  roll_array[(this->ordered_array_tracker_state_ptrs[i]->roll)-1];
-     }
 
+    // save lost tracker roll
+    enum Roll lost_tracker_roll = \
+      this->ordered_array_tracker_state_ptrs[tracker_indx]->roll;
+    std::cout << "Lost Tracker Roll is: " << roll_string_map[lost_tracker_roll] << std::endl;
+    
     // zero out the lost tracker, drop the number of trackers and resort
     this->ordered_array_tracker_state_ptrs[tracker_indx]->guid =\
       this->ff_guid;
@@ -146,6 +144,25 @@ namespace MODULE
     this->number_of_trackers--; 
     this->sortSaveGuids(); // force reordering of the array
     this->is_new_tracker = false; // vote null Guids for lost tracker
+
+    // promote all lower non null guid trackers
+    for (int i=0; i<3; i++) {
+      // enum Primary 0, Secondary 1, Tertiary 3
+      if (this->ordered_array_tracker_state_ptrs[i]->roll > lost_tracker_roll &&
+	  this->ordered_array_tracker_state_ptrs[i]->roll !=UNASSIGNED) {
+	enum Roll t_roll = this->ordered_array_tracker_state_ptrs[i]->roll;
+        this->ordered_array_tracker_state_ptrs[i]->roll = roll_array[t_roll-1]; 
+	  // roll_array[(this->ordered_array_tracker_state_ptrs[i]->roll)-1];
+	std::cout << "LostTracker() promoted: from: "
+		  << roll_string_map[t_roll]  << " to: "
+		  << roll_string_map[this->ordered_array_tracker_state_ptrs[i]->roll]
+		  << " temp cmpr: "
+		  << roll_string_map[t_roll-1]
+		  << std::endl;
+      }
+     }
+    this->printSortedTrackers();
+
   }
     
   
@@ -385,89 +402,36 @@ namespace MODULE
 
   void VoteWtr::vote()
   {
-    // We only vote at initialization and anytime we loose a tracker.
-    // Redundancy::lostTracker() ensure promotions took place.
-    // We know we have the following senarios:
-    //    Simplex - {Primary, Unassigned, Unassigned}
-    //    Duplex - {Primary, Secondary, Unassigned}
-    //    Triplex - {Primary, Secondary, Tertiary}
-    //
-    // During INITIALIZATION we vote rank order of Guids lowest
-    // to highest Primary, Secondary, Tertiary.
-    //
-    // Operationally, loss of a tracker, we vote for incumbants
-    // Current (promoted or now)  Primary / Primary,
-    // If Secondary - Current Secondary / Secondary
-    // Always fill out null guid vote for empty Secondary
-    // and Tertiary (always empty if we are revoting).
-
-    bool was_operational{false};
-    bool is_primary {false}, is_secondary{false}, is_tertiary{false};
-    int primary_idx, secondary_idx, tertiary_idx, new_tracker_idx;
-    
-    for (int i=0; i<3; i++){
-      //std::cout << my_redundancy_info_obj->getTrackerState_ptr(i)->guid << " : "
-      //           << my_redundancy_info_obj->getTrackerState_ptr(i)->roll;
-      
-      switch(this->my_redundancy_info_obj->getTrackerState_ptr(i)->roll) {
-      case UNASSIGNED:
-	// a new tracker does not yet have a roll
-	new_tracker_idx = i;
-	break;
-       case PRIMARY:
-	was_operational = true;
-	is_primary = true;
-	primary_idx = i;
-	break;
-      case SECONDARY:
-	was_operational = true;
-	is_secondary = true;
-	secondary_idx = i;
-	break;
-      case TERTIARY:
-	was_operational = true;	
-	is_tertiary = true;
-	tertiary_idx=1;
-	break;
-      default:
-	std::cerr << "switch assessVote error and abort" << std::endl;
-      }
-    } // for
+    // Initialize the sample (source guid filled out in c'tor)
+    // set Initialize all votes to null_guid
+    for (int i=0; i<3; i++)
+      this->setSampleField(roll_string_map[roll_array[i]],		\
+			   my_redundancy_info_obj->getNullGuid());      
 
     // Set the number of trackers we are voting for (non-null guids)
     this->getMyDataSample()->value("NumberOfTrackers", \
 				    my_redundancy_info_obj->numberOfTrackers());
-    if (was_operational) {
-      std::cout << "Operational: "
-		<< my_redundancy_info_obj->getMyOrdinal()
-		<< " " << primary_idx << " " << secondary_idx
-		<< " " << tertiary_idx << std::endl;
-      if (is_primary) {// and was a Primary so keep incumbant in office
-	this->setSampleField("Primary",
-		   my_redundancy_info_obj->getTrackerState_ptr(primary_idx)->guid);
-	if (is_secondary)  // and was secondary keep incumbant secondary
-	  this->setSampleField("Secondary",
-		   my_redundancy_info_obj->getTrackerState_ptr(secondary_idx)->guid);
-	else  // no secondary, primary only fill out with null guid
-	    this->setSampleField("Secondary", my_redundancy_info_obj->getNullGuid());
-	// always fill out three votes, so set Tertiary field null guid
-	this->setSampleField("Tertiary", my_redundancy_info_obj->getNullGuid());
 
-	if (is_tertiary) // was operation w/failure but we have 3 Trackers
-	  std::cerr << " ERROR: Voting - Inconsistant state " << std::endl;
-	
-      }else // No Primary: tracker loss() would have ensured a promotion to primary
-	  std::cerr << " ERROR Voting: Was operation w/No Primary" << std::endl;
-      
-    } else { // was not operational, no rolls ever assigned
-      // vote by sorted guid, lowest {Primary} to higher 
-      for (int i=0; i<3; i++) 
-	this->setSampleField(roll_string_map[i],			\
-			   my_redundancy_info_obj->getTrackerState_ptr(i)->guid);
-    }
+			       
+    // set the votes according to if the system was operational or not.
+    //
+    if (!my_redundancy_info_obj->isLateJoiner()) //was not operational,
+      // no rolls assigned. Assign them in order of sorted guids
+      // lowest {Primary} to higher
+      for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
+	my_redundancy_info_obj->getTrackerState_ptr(i)->roll=roll_array[i];
+      }
+    // else was operational and the durable votes have fill the db
+    // At this point the ordered db has all rolls assigned
+ 
+    for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++)
+	  this->setSampleField( \
+		      roll_string_map[my_redundancy_info_obj->getTrackerState_ptr(i)->roll], \
+		      my_redundancy_info_obj->getTrackerState_ptr(i)->guid
+				);
 
     // We've populated the Vote Topic with our Selections according to the voting algorithm.
-    // Now Read the topic back and register our vote
+    // Now Read our vote topic back and register our own vote (since we won't receive it)
     for (int l=0; l<my_redundancy_info_obj->numberOfTrackers(); l++) {
 
       std::vector<uint8_t> seq_values_p = getMyDataSample()->get_values<uint8_t>(roll_string_map[l]);
@@ -517,107 +481,170 @@ namespace MODULE
 
   void VoteRdr::handler(dds::core::xtypes::DynamicData& data)
   {
-    std::cout << "Received Vote" << std::endl;
+    // Votes can be received under three conditions (states):
+    //
+    //   INITIALIZE / POSTINIT (This tracker is a Late Joiner) - indicates
+    //   the system  has been running, other trackers (1 or 2 of them) have
+    //   voted and are in VOTE_RESULTS or more likely STEADY_STATE.
+    //
+    //   STEADY_STATE: (Late Joiner entered the system, and MUST vote the
+    //   incumbants Primary and Secondary (if two trackers running) and add
+    //   itself as Secondary or Tertiary ( 1 or 2 running trackers as
+    //   indicated in the durable vote) the late joiner received during
+    //   the INITIALIZE phase.
+    //
+    //   WAITING_VOTES_IN: This is the "normal" case when Trackers come
+    //   on line together. Heartbeat timing resets, ensure that as
+    //   Trackers come up within a 10sec window they all go though the
+    //   POSTINIT and get to VOTE state within 100ms of eachother (so
+    //   that none of the trackers coming up together see the others or
+    //   themselves as a late joiner.
+    //    
+    std::cout << "\nReceived Vote during State "
+	      << state_string_map[my_redundancy_info_obj->smState()];
 
-    rti::core::Guid this_guid, guid[3];
-    bool tracker_voted {false};
-
+    bool tracker_voted {true}; // set true so vote ignored by default
+    bool known_tracker {false};
+    
     int number_voted_trackers;
 
-    tracker_voted = false;
     number_voted_trackers  = (int)data.value<int32_t>("NumberOfTrackers");
 
-    // verify this tracker has not already voted (should be impossible)
+    rti::core::Guid this_guid, guid[3];
+    for (int i=0; i<3; i++) // initialize guid array to null Guid
+      guid[i]=my_redundancy_info_obj->getNullGuid(); 
+
+    // Verify source and integrity of the vote.
+    // Verify Source: The vote must be from a known tracker, (ignore
+    // unknown tracker  votes) this valid tracker has not already voted
+    // (not supposed to), or dupplicate votes (i.e. if a the same
+    // known tracker voted twice (technically an error).
+    //
     this_guid = this->extractGuid(data, "SourceHBwriterHandle");
+    std::cout << " From: " << this_guid << std::endl;
     for (int i=0; i<number_voted_trackers; i++) {
       if (this_guid == \
 	  my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
-	if (my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted)
-	  tracker_voted = true;
-	else // if found guid and not voted, mark it as voted
+	if (!my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted) {
+	  tracker_voted = false; // tracker had not previously voted
 	  my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted = true;
+	}
 	break;
       }
     }
-    if (!tracker_voted) { // process vote 
-      // first check the vote is consistent - all guids are different
-      // for each roll
-      for (int l=0; l<number_voted_trackers; l++) {
-	guid[l] = this->extractGuid(data, roll_string_map[l]);
-	if (l>1)
-	  for (int k=0; k<l; k++)
-	    if (guid[k]==guid[l])
-	      goto bad_vote;
+    std::cout << "Verified Source is consistent" << std::endl;
+  
+    // Verify integrity of the vote: A valid tracks votes are all unique
+    // - i.e. it did not vote for the same tracker for two different
+    // rolls, or vote for a null Guid. All votes are for known trackers.
+    //
+    if (!tracker_voted) { // complete validation of the vote
+      for (int i=0; i<number_voted_trackers; i++) {
+      // verify the integrity of the vote: no dupplicate votes
+      // or votes for nullGuid
+      guid[i] = this->extractGuid(data, roll_string_map[i]);
+      std::cout << "Extracted from vote: " << guid[i]
+		<< " For roll: " << roll_string_map[i]
+		<< std::endl;
+      // compare guid[i] to all prior voted guids for valid, non-dup
+      for (int k=0; k<i; k++) 
+	if (guid[i]==guid[k] || \
+	    guid[i]==my_redundancy_info_obj->getNullGuid())
+	  goto bad_vote;
       }
-      // Votes are durable, so if we get a vote in the INITIALIZE state,
-      // we receive votes in one of up to 3 states:
-      //   INITIALIZE - indicates the system has been running, other trackers
-      //   (1 or 2 of them) have voted and we are a late joiners.
-      //   In this case we should simply make our view of received votes based
-      //   on the first vote we receive
-      //   VOTE - heartbeats and durable votes can race eachother. This covers
-      //   the case where heartbeats beat durable votes and a late joiner
-      //    quickly went to VOTE state
-      //   WAIT_VOTES_IN - indicates this tracker came up with the system,
-      //   so tally each vote and vote once all trackers we learned about
-      //   during init state are in.
-      if (my_redundancy_info_obj->smState()==INITIALIZE || \
-	  my_redundancy_info_obj->smState()==POSTINIT) {
+    }
+    std::cout << "Verified no votes for  dups or null Guids" << std::endl;
+      
+    // verify all guids voted for were for known trackers
+    for (int i=1; i<number_voted_trackers; i++) {
+      known_tracker = false;
+      for (int k=0; k<3; k++) 
+	if (guid[i] ==  my_redundancy_info_obj->getTrackerState_ptr(k)->guid)
+	  known_tracker = true;
+      if (!known_tracker)
+	goto bad_vote;  
+    }
 
-	for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++) {
-	  // see who's Guid we are getting a vote for?
-	  for (int i=0; i<number_voted_trackers; i++) {
-	    if (guid[roll_idx] ==						\
-		my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
-	      // increment the vote for tracker based on the roll we are checking
-	      // and set this tracker OPERATIONAL as we received a transient
-	      // local vote from it's vote Writer. Also set the HB cnt so we
-	      // don't immediately declare it missing.
-	      std::cout << "Placeing votes for Tracker: "
-			<< guid[roll_idx] << " "
-			<< roll_string_map[roll_idx]
-			<< " votes: " << number_voted_trackers+1;
-	      my_redundancy_info_obj->getTrackerState_ptr(i)->votes[roll_idx] \
-		= number_voted_trackers+1; // add my vote to the same
-	      my_redundancy_info_obj->getTrackerState_ptr(i)->state = OPERATIONAL;
-	      my_redundancy_info_obj->getTrackerState_ptr(i)->hbDeadlineCnt = 1;
-	    }
-	  }
-	} // for roll_idx;
-	std::cout << "System Has been running - use old votes" << std::endl;
-	// Set our own vote. Note number_of_voted trackers (1 or 2) tells us
-	// if we are voting ourselves Secondary or Tertiary.
-	// Roll enums are 0 based, so number_of trackers are 1, 2, 3.
-	my_redundancy_info_obj->getMyTrackerStatePtr()->roll= \
-	  roll_array[number_voted_trackers];
-	my_redundancy_info_obj-> getMyTrackerStatePtr()-> \
-	  votes[number_voted_trackers] = number_voted_trackers+1;
-	// no need to wait for next vote or 10 sec if the system had been
-	// operational as we are only adding this tracker back.
-	my_redundancy_info_obj->setLateJoiner(true);	
-	my_redundancy_info_obj->setVotesExpected(number_voted_trackers+1);
+    std::cout << "Verified all votes for known trackers" << std::endl;
+    std::cout << "Vericiation complete " << std::endl;
+      
+    // At this point the vote is validated. Process it.
+    switch (my_redundancy_info_obj->smState()) {
 
-      } else { // the system was not previously running
-        std::cout << "System just up process new vote - " << std::endl;
-	my_redundancy_info_obj->incVotesIn(); //  inc total vote tally
-	// go through and extact the vote Primary to Tertiary
-	for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++) {
-	  // see who's Guid we are getting a vote for?
-	  for (int i=0; i<number_voted_trackers; i++) {
-	    if (guid[roll_idx] ==						\
-		my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
-	      // increment the vote for tracker based on the roll we are checking
-	      my_redundancy_info_obj->getTrackerState_ptr(i)->votes[roll_idx]++;
+    case INITIALIZE:
+    case POSTINIT:	
+      // for each roll see which tracker is currently assigned and give
+      // it the number of trackers plus 1 (our vote)
+      
+      for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++) { 
+	// see who's Guid we are getting a vote for?
+	for (int i=0; i<3; i++) { // go through all tracker ordinals
+	  if (guid[roll_idx] ==						\
+	      my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
+	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[roll_idx] \
+	      = number_voted_trackers+1; // add my vote to the same
+	    my_redundancy_info_obj->getTrackerState_ptr(i)->roll 
+	      = roll_array[roll_idx]; // set incumbant roll
 	  }
-	} // for roll_idx;
-      }
+	}
+      } // for roll_idx;
+	
+      std::cout << "System Has been running - use old votes" << std::endl;
+      // Set our own vote. Note number_of_voted trackers (1 or 2) tells us
+      // if we are voting ourselves Secondary or Tertiary.
+      // Roll enums are 0 based, so number_of trackers are 1, 2, 3.
+      my_redundancy_info_obj->getMyTrackerStatePtr()->roll= \
+	roll_array[number_voted_trackers];
+      my_redundancy_info_obj-> getMyTrackerStatePtr()-> \
+	votes[number_voted_trackers] = number_voted_trackers+1;
+      // no need to wait for next vote or 10 sec if the system had been
+      // operational as we are only adding this tracker back.
+      my_redundancy_info_obj->setLateJoiner(true);	
+      std::cout << "Vote Reader Late Joining registered vote state" << std::endl;
+      my_redundancy_info_obj->printVoteResults();
+      break;
+
+    case VOTE:
+    case WAIT_VOTES_IN:
+      std::cout << "System just up process new vote - " << std::endl;
+      // go through and extact the vote Primary to Tertiary
+      for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++) {
+	// see who's Guid we are getting a vote for?
+	for (int i=0; i<number_voted_trackers; i++) {
+	  if (guid[roll_idx] ==						\
+	      my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
+	    // increment the vote for tracker based on the roll we are checking
+	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[roll_idx]++;
+	}
+      }  // for roll_idx;
+      break;
+      
+    case VOTE_RESULTS:
+    case STEADY_STATE:
+      // A vote received after voting is a late joining Tracker. All were
+      // interested in is to update our tracker db with the late joins roll.      
+      for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++)
+	if (this_guid == guid[roll_idx])
+	  my_redundancy_info_obj->getTrackerState_ptr(roll_idx)->roll \
+	    = roll_array[roll_idx];
+      break;
+    
+    case SHUT_DOWN:
+    case ERROR:
+    default:// do nothing for these states
+      break;
+      
     } // if tracker did not vote
 
   done:
+    my_redundancy_info_obj->incVotesIn(); //  inc total vote tally
     return;
     
   bad_vote:
-    std::cerr << "Vote found inconsistent" << std::endl;
+    std::cerr << "Vote found inconsistent from source: "
+	      << this_guid
+	      << std::endl;
+    //TODO: Mark that source as failed and ignore heartbeats  
   };
     
 } // namespace MODULE
