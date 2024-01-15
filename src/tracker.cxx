@@ -34,17 +34,17 @@ void run_tracker_application(unsigned int tracked_channel) {
     dds::domain::DomainParticipant participant =
       qos_provider->create_participant_from_config("PixyTrackerParticipant_Library::PixyTrackerParticipant");
 
-    RedundancyInfo redundancy_info(participant); // info to share beteween Heartbeat and Vote logic
+    RedundancyDb redundancy_db(participant); // db to share beteween Heartbeat and Vote logic
     
     // Instantiate Topic Readers and Writers w/threads. Note, the names eg. servo_writer is
     // just a handle to the server_writer and not the actual DDS writer (use the getMyDataWriter())
     // fucntion from the ddsEntities.hpp writer class.
     ServoWtr servo_writer(participant); 
     ShapesRdr shapes_reader(participant, &servo_writer);
-    HeartbeatWtr tracker_hb_wtr(participant, &redundancy_info, PERIODIC, DEFAULT_PERIOD);
-    HeartbeatRdr tracker_hb_rdr(participant, &redundancy_info);
-    VoteWtr vote_wtr(participant, &redundancy_info);
-    VoteRdr vote_rdr(participant, &redundancy_info);
+    HeartbeatWtr tracker_hb_wtr(participant, &redundancy_db, PERIODIC, DEFAULT_PERIOD);
+    HeartbeatRdr tracker_hb_rdr(participant, &redundancy_db);
+    VoteWtr vote_wtr(participant, &redundancy_db);
+    VoteRdr vote_rdr(participant, &redundancy_db);
 
     
     // Ignore our own writers (e.g. heartbeat and votes
@@ -107,7 +107,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       // detected trackers (i.e. loss of heartbeat or new tracker heartbeat),
       // or it may SHUT_DOWN if directed.
       //
-      switch (redundancy_info.smState()) {	
+      switch (redundancy_db.smState()) {	
 	// Note:  The sleep in INITIALIZE ensures we wait at least 1 sec after
 	//        all the trackers, if all three trackers are up, and makes a one time
 	//        worst case 10sec startup.
@@ -126,11 +126,11 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// joiner.
 	//if (!(cycle_cnt++ %5)) {
 	//  cycle_cnt=1;
-	  std::cout << redundancy_info.numberOfTrackers() << ":" << std::flush;
+	  std::cout << redundancy_db.numberOfTrackers() << ":" << std::flush;
 	  //}
-	  if (redundancy_info.numberOfTrackers()==redundancy_info.votesExpected() \
-	      || redundancy_info.tenSecCount()) {
-	    redundancy_info.setSM_State(POSTINIT);
+	  if (redundancy_db.numberOfTrackers()==redundancy_db.votesExpected() \
+	      || redundancy_db.tenSecCount()) {
+	    redundancy_db.setSM_State(POSTINIT);
 	};
 	break;
 
@@ -141,7 +141,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	
 	rti::util::sleep(dds::core::Duration(1));
 
-        redundancy_info.setSM_State(VOTE);	  
+        redundancy_db.setSM_State(VOTE);	  
 	break;
 
       case VOTE:
@@ -156,7 +156,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	rti::util::sleep(dds::core::Duration(1));
 
 	vote_wtr.vote(); 
-	redundancy_info.setSM_State(WAIT_VOTES_IN);
+	redundancy_db.setSM_State(WAIT_VOTES_IN);
 	  
 	cycle_cnt=5; // make sure we print the first entry to each state
 	break;
@@ -165,15 +165,15 @@ void run_tracker_application(unsigned int tracked_channel) {
 	if (!(cycle_cnt++ %5)) {
 	  cycle_cnt = 1;
 	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
-	  std::cout << redundancy_info.votesIn()
+	  std::cout << redundancy_db.votesIn()
 		    << " "
-		    << redundancy_info.numberOfTrackers()
+		    << redundancy_db.numberOfTrackers()
 		    << std::endl;
 	};
 	// wait for all votes to be in, if < 3 the timing is dependent
 	// upon delays from different trackers starting.
-        if (redundancy_info.votesIn() == redundancy_info.numberOfTrackers()) 
-	  redundancy_info.setSM_State(VOTE_RESULTS);
+        if (redundancy_db.votesIn() == redundancy_db.numberOfTrackers()) 
+	  redundancy_db.setSM_State(VOTE_RESULTS);
 	break;
 
       case VOTE_RESULTS: 
@@ -181,31 +181,31 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// Assess if all trackers are consistent - fault any missing
 	// or inconsistent trackers. Set Pixy_Servo_Strength based on
 	// results: PRIMARY 30, SECONDARY 20, TERTIARY 10
-	redundancy_info.assessVoteResults();
+	redundancy_db.assessVoteResults();
 	// clear voting immediatly after tally for next potential vote
 	// not in vote state, since votes are durable and may already
 	// be in upon restart.
-	redundancy_info.clearVotes(); 
-	//redundancy_info.printSortedTrackers();
+	redundancy_db.clearVotes(); 
+	//redundancy_db.printSortedTrackers();
 
 	// change my ownership strength based on my roll.
-        ownership_strength_value = redundancy_info.getMyRollStrength();
+        ownership_strength_value = redundancy_db.getMyRollStrength();
 	ownership_strength.value(ownership_strength_value);
 	writer_qos << ownership_strength;
 	servo_writer.getMyDataWriter().qos(writer_qos);
 	servo_writer.enable(); // enable after we've set the strength
 
-	//redundancy_info.printVoteResults();
-	redundancy_info.setSM_State(STEADY_STATE);
+	//redundancy_db.printVoteResults();
+	redundancy_db.setSM_State(STEADY_STATE);
 	cycle_cnt=0; // next cycle triggers a print upon entry to STEADY_STATE
 	break;
 	
       case STEADY_STATE:
 	// print the first time we enter state or if new tracker
-	if (redundancy_info.isNewTracker() or cycle_cnt==0) {
+	if (redundancy_db.isNewTracker() or cycle_cnt==0) {
 	  std::cout << "STATE: STEADY_STATE" << std::endl;
-	  redundancy_info.printMyState();
-	  redundancy_info.setNewTracker(false);
+	  redundancy_db.printMyState();
+	  redundancy_db.setNewTracker(false);
 	}
      
 	servo_writer.printGimbalPosition();	  
@@ -217,35 +217,35 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// done is a less urgent manner. 
 	//   
 	if (cycle_cnt++ %ONE_SEC) // assess revote every one sec
-	  for (int i=0; i<redundancy_info.numberOfTrackers(); i++){
-	    if ((i !=redundancy_info.getMyOrdinal()-1) && \
-		(redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt == 0)) {
+	  for (int i=0; i<redundancy_db.numberOfTrackers(); i++){
+	    if ((i !=redundancy_db.getMyOrdinal()-1) && \
+		(redundancy_db.getTrackerState_ptr(i)->hbDeadlineCnt == 0)) {
 	      std::cout << "\nFAULT DEADLINE MISS -  Tracker: "
-			<< redundancy_info.getTrackerState_ptr(i)->guid
+			<< redundancy_db.getTrackerState_ptr(i)->guid
 			<< std::endl;
 	      // we need to drop this tracker and promote all lower trackers
-	      redundancy_info.lostTracker(i);
-	      redundancy_info.setSM_State(VOTE);
+	      redundancy_db.lostTracker(i);
+	      redundancy_db.setSM_State(VOTE);
 	      break;
 	    } else {
 	      // zero the count
-	      redundancy_info.getTrackerState_ptr(i)->hbDeadlineCnt = 0;
+	      redundancy_db.getTrackerState_ptr(i)->hbDeadlineCnt = 0;
 	    }
 	  } // for
 
 	// Discovered a late joining Tracker, bring in silently at next
 	// available roll {Secondary, Tertiary}
-	if (redundancy_info.isNewTracker()) {
+	if (redundancy_db.isNewTracker()) {
 	  ;
 	}
 	// while the background update LEDs and check our ordinal
 	// An invalid ordinal indicates a software bug.
-	if (!redundancy_info.validateMyOrdinal()) {
+	if (!redundancy_db.validateMyOrdinal()) {
 	  std::cerr << "Ordinal Failure: "
-		    << redundancy_info.getMyOrdinal() 
-		    << " " << redundancy_info.getMyGuid()
+		    << redundancy_db.getMyOrdinal() 
+		    << " " << redundancy_db.getMyGuid()
 		    << std::endl;
-	  redundancy_info.setSM_State(ERROR);
+	  redundancy_db.setSM_State(ERROR);
 	}
 	
 	break;
@@ -258,7 +258,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       case ERROR: // detectable error state
 	std::cout << "\nSTATE: ERROR" << std::endl;	
 	// print message/red light LEDs and SHUT DOWN
-	redundancy_info.setSM_State(SHUT_DOWN);
+	redundancy_db.setSM_State(SHUT_DOWN);
 	break;
 	
       default:

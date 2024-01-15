@@ -50,7 +50,7 @@ namespace MODULE
   }
 
   
-  RedundancyInfo::RedundancyInfo(const dds::domain::DomainParticipant participant)
+  RedundancyDb::RedundancyDb(const dds::domain::DomainParticipant participant)
   {
     // initialize guid tracking array to my_guid followed by 0's
     uint8_t iarr[16] {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
@@ -67,7 +67,7 @@ namespace MODULE
   }
 
   
-  void RedundancyInfo::printSortedTrackers() {
+  void RedundancyDb::printSortedTrackers() {
       std::cout << "DISCOVERED SORTED TRACKERS " << std::endl;
       std::cout << "This Tracker is Ordinal: " << this->my_ordinal
 		<< " Trackers cnt: " << this->number_of_trackers
@@ -82,14 +82,14 @@ namespace MODULE
     }
 
   
-  int RedundancyInfo::getMyRollStrength()
+  int RedundancyDb::getMyRollStrength()
   {
     int ownership_strength_roll_map[3] {30,20,10};
     return ownership_strength_roll_map					\
       [this->ordered_array_tracker_state_ptrs[this->my_ordinal-1]->roll];
   }
 
-  void RedundancyInfo::sortSaveGuids()
+  void RedundancyDb::sortSaveGuids()
   {
     TrackerState* temp_tracker_state_ptr;
     for (int l=0; l<2; l++) {
@@ -120,7 +120,7 @@ namespace MODULE
   }
 
   
-  void RedundancyInfo::lostTracker(int tracker_indx)
+  void RedundancyDb::lostTracker(int tracker_indx)
   {
     // Lost a tracker(tracker_ordinal = tracker_indx+1).
     // We need to promote all lower trackers
@@ -166,7 +166,7 @@ namespace MODULE
   }
     
   
-  void RedundancyInfo::assessVoteResults(void)
+  void RedundancyDb::assessVoteResults(void)
   {
     /*
     std::cout << "My Tracker Guid: "
@@ -271,7 +271,7 @@ namespace MODULE
 
   HeartbeatWtr::HeartbeatWtr(
 			     const dds::domain::DomainParticipant participant,
-			     RedundancyInfo* redundancy_db_obj,
+			     RedundancyDb* redundancy_db_obj,
 			     bool periodic,
 			     dds::core::Duration period) 
     : Writer(participant, "TrackerHeartbeat", \
@@ -318,7 +318,7 @@ namespace MODULE
   
 
   HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant,
-			     RedundancyInfo* redundancy_db_obj)
+			     RedundancyDb* redundancy_db_obj)
     : Reader(participant, "TrackerHeartbeat", "subscriber::tracker_hb_topic_reader")
   {
     this->redundancy_db_obj = redundancy_db_obj;
@@ -367,7 +367,7 @@ namespace MODULE
 
 
   VoteWtr::VoteWtr(const dds::domain::DomainParticipant participant,
-		   RedundancyInfo* redundancy_db_obj,
+		   RedundancyDb* redundancy_db_obj,
 		   bool periodic,
 		   dds::core::Duration period)
     : Writer(participant, "VoteType", \
@@ -458,7 +458,7 @@ namespace MODULE
 
     
   VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant,
-		   RedundancyInfo* redundancy_db_obj)
+		   RedundancyDb* redundancy_db_obj)
     : Reader(participant, "VoteType", "subscriber::vote_topic_reader")
   {
     this->redundancy_db_obj = redundancy_db_obj;    

@@ -65,14 +65,14 @@ namespace MODULE
 
   }; 
 
-  class RedundancyInfo {  
+  class RedundancyDb {  
   /* This class keeps all of the information as to Heartbeats received and 
        ordinal position etc. Needed by the Voting logic
   */
   public: 
     
-    RedundancyInfo(const dds::domain::DomainParticipant participant);
-    ~RedundancyInfo(void){}
+    RedundancyDb(const dds::domain::DomainParticipant participant);
+    ~RedundancyDb(void){}
 
     int getMyOrdinal(void) {return this->my_ordinal;};
     bool validateMyOrdinal(void) {
@@ -298,7 +298,7 @@ namespace MODULE
   public:
     HeartbeatWtr(
 		 const dds::domain::DomainParticipant participant,
-		 RedundancyInfo* redundancy_db_obj,
+		 RedundancyDb* redundancy_db_obj,
 		 bool periodic = false,
 		 dds::core::Duration period=std::chrono::seconds(4));
 
@@ -309,7 +309,7 @@ namespace MODULE
     void write();
   
   private:
-    RedundancyInfo* redundancy_db_obj;
+    RedundancyDb* redundancy_db_obj;
     
     
   };
@@ -319,14 +319,14 @@ namespace MODULE
   public:
     // Readers are not going to listen to thier own participants hbs
     HeartbeatRdr(const dds::domain::DomainParticipant participant,
-		 RedundancyInfo* redundancy_db_obj);
+		 RedundancyDb* redundancy_db_obj);
     
     ~HeartbeatRdr(void){};
 
     void handler(dds::core::xtypes::DynamicData& data);
 
     private:
-    RedundancyInfo* redundancy_db_obj;
+    RedundancyDb* redundancy_db_obj;
     
   };
 
@@ -334,7 +334,7 @@ namespace MODULE
   public:
     VoteWtr(
 	    const dds::domain::DomainParticipant participant,
-	    RedundancyInfo* redundancy_db_obj,
+	    RedundancyDb* redundancy_db_obj,
 	    bool periodic = false,
 	    dds::core::Duration period=std::chrono::seconds(4));
 
@@ -349,7 +349,7 @@ namespace MODULE
 
   private:
     void setSampleField(std::string topic_field, rti::core::Guid guid);
-    RedundancyInfo* redundancy_db_obj;
+    RedundancyDb* redundancy_db_obj;
     
 
   };
@@ -358,14 +358,14 @@ namespace MODULE
   public:
     // Readers are not going to listen to thier own participants vote
     VoteRdr(const dds::domain::DomainParticipant participant,
-	    RedundancyInfo* redundancy_db_obj);   
+	    RedundancyDb* redundancy_db_obj);   
     
     ~VoteRdr(void) {};
 
     void handler(dds::core::xtypes::DynamicData& data);
 
   private:
-    rti::core::Guid extractGuid(dds::core::xtypes::DynamicData& sample, std::string topicField);        RedundancyInfo* redundancy_db_obj;
+    rti::core::Guid extractGuid(dds::core::xtypes::DynamicData& sample, std::string topicField);        RedundancyDb* redundancy_db_obj;
 
 
   };
