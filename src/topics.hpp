@@ -298,7 +298,7 @@ namespace MODULE
   public:
     HeartbeatWtr(
 		 const dds::domain::DomainParticipant participant,
-		 RedundancyInfo* redundancy_info_obj,
+		 RedundancyInfo* redundancy_db_obj,
 		 bool periodic = false,
 		 dds::core::Duration period=std::chrono::seconds(4));
 
@@ -309,7 +309,7 @@ namespace MODULE
     void write();
   
   private:
-    RedundancyInfo* my_redundancy_info_obj;
+    RedundancyInfo* redundancy_db_obj;
     
     
   };
@@ -319,14 +319,14 @@ namespace MODULE
   public:
     // Readers are not going to listen to thier own participants hbs
     HeartbeatRdr(const dds::domain::DomainParticipant participant,
-		 RedundancyInfo* redundancy_info_obj);
+		 RedundancyInfo* redundancy_db_obj);
     
     ~HeartbeatRdr(void){};
 
     void handler(dds::core::xtypes::DynamicData& data);
 
     private:
-    RedundancyInfo* my_redundancy_info_obj;
+    RedundancyInfo* redundancy_db_obj;
     
   };
 
@@ -334,7 +334,7 @@ namespace MODULE
   public:
     VoteWtr(
 	    const dds::domain::DomainParticipant participant,
-	    RedundancyInfo* redundancy_info_obj,
+	    RedundancyInfo* redundancy_db_obj,
 	    bool periodic = false,
 	    dds::core::Duration period=std::chrono::seconds(4));
 
@@ -349,7 +349,7 @@ namespace MODULE
 
   private:
     void setSampleField(std::string topic_field, rti::core::Guid guid);
-    RedundancyInfo* my_redundancy_info_obj;
+    RedundancyInfo* redundancy_db_obj;
     
 
   };
@@ -358,14 +358,14 @@ namespace MODULE
   public:
     // Readers are not going to listen to thier own participants vote
     VoteRdr(const dds::domain::DomainParticipant participant,
-	    RedundancyInfo* redundancy_info_obj);   
+	    RedundancyInfo* redundancy_db_obj);   
     
     ~VoteRdr(void) {};
 
     void handler(dds::core::xtypes::DynamicData& data);
 
   private:
-    rti::core::Guid extractGuid(dds::core::xtypes::DynamicData& sample, std::string topicField);        RedundancyInfo* my_redundancy_info_obj;
+    rti::core::Guid extractGuid(dds::core::xtypes::DynamicData& sample, std::string topicField);        RedundancyInfo* redundancy_db_obj;
 
 
   };

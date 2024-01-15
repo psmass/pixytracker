@@ -271,14 +271,14 @@ namespace MODULE
 
   HeartbeatWtr::HeartbeatWtr(
 			     const dds::domain::DomainParticipant participant,
-			     RedundancyInfo* redundancy_info_obj,
+			     RedundancyInfo* redundancy_db_obj,
 			     bool periodic,
 			     dds::core::Duration period) 
     : Writer(participant, "TrackerHeartbeat", \
 	     "publisher::tracker_hb_topic_writer",\
 	     periodic, period)
   {
-    this->my_redundancy_info_obj = redundancy_info_obj;
+    this->redundancy_db_obj = redundancy_db_obj;
 
     /* Get my Heartbeat writer Instance Handle to use as my unique identifier.
        Note: we need the HB Writer (instance) GUID to compare should HB missed
@@ -292,8 +292,8 @@ namespace MODULE
     // initially all trackers place their own guid in the [0] index prior to
     // bubble sorting the ordered_array_tracker_state_ptrs[3]
     rti::core::Guid guid = convertToGuid(handle);
-    this->my_redundancy_info_obj->getMyTrackerStatePtr()->guid = guid;
-    this->my_redundancy_info_obj->setMyGuid(guid);
+    this->redundancy_db_obj->getMyTrackerStatePtr()->guid = guid;
+    this->redundancy_db_obj->setMyGuid(guid);
     std::cout << "MY GUID: " << guid << std::endl;
     
     // get my guid and place it in the heartbeat sample (note it's actually already there
@@ -318,10 +318,10 @@ namespace MODULE
   
 
   HeartbeatRdr::HeartbeatRdr(const dds::domain::DomainParticipant participant,
-			     RedundancyInfo* redundancy_info_obj)
+			     RedundancyInfo* redundancy_db_obj)
     : Reader(participant, "TrackerHeartbeat", "subscriber::tracker_hb_topic_reader")
   {
-    this->my_redundancy_info_obj = redundancy_info_obj;
+    this->redundancy_db_obj = redundancy_db_obj;
   };
 
   void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data)
@@ -340,25 +340,25 @@ namespace MODULE
     bool duplicate {false};
     // if an existing hb guid, increment my hb dead man/deadline count of
     // the corresponding tracker
-    for (int i=0; i<this->my_redundancy_info_obj->numberOfTrackers(); i++)
-      if (hb_guid==this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
+    for (int i=0; i<this->redundancy_db_obj->numberOfTrackers(); i++)
+      if (hb_guid==this->redundancy_db_obj->getTrackerState_ptr(i)->guid) {
 	 duplicate=true;
-	 this->my_redundancy_info_obj->getTrackerState_ptr(i)->hbDeadlineCnt++;
+	 this->redundancy_db_obj->getTrackerState_ptr(i)->hbDeadlineCnt++;
 	}
 
     // if new tracker we have available tracker space, find available slot in
     // tracker array populate it and sort/resort.
-    if  (!duplicate && (this->my_redundancy_info_obj->numberOfTrackers() < 3)) {
-      this->my_redundancy_info_obj->incNumberOfTrackers();
-      this->my_redundancy_info_obj->resetTenSecCount(); 
+    if  (!duplicate && (this->redundancy_db_obj->numberOfTrackers() < 3)) {
+      this->redundancy_db_obj->incNumberOfTrackers();
+      this->redundancy_db_obj->resetTenSecCount(); 
       for (int i=0; i<3; i++)
-	if (this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid == \
-	    this->my_redundancy_info_obj->getNullGuid()) {
-	  this->my_redundancy_info_obj->getTrackerState_ptr(i)->guid = hb_guid;
-	  this->my_redundancy_info_obj->getTrackerState_ptr(i)->state = OPERATIONAL;
-	  this->my_redundancy_info_obj->getTrackerState_ptr(i)->hbDeadlineCnt = 1;
-	  this->my_redundancy_info_obj->sortSaveGuids();
-	  this->my_redundancy_info_obj->setNewTracker(true);
+	if (this->redundancy_db_obj->getTrackerState_ptr(i)->guid == \
+	    this->redundancy_db_obj->getNullGuid()) {
+	  this->redundancy_db_obj->getTrackerState_ptr(i)->guid = hb_guid;
+	  this->redundancy_db_obj->getTrackerState_ptr(i)->state = OPERATIONAL;
+	  this->redundancy_db_obj->getTrackerState_ptr(i)->hbDeadlineCnt = 1;
+	  this->redundancy_db_obj->sortSaveGuids();
+	  this->redundancy_db_obj->setNewTracker(true);
 	  break;
 	} 
       // std::cout << hb_guid << std::endl;
@@ -367,20 +367,20 @@ namespace MODULE
 
 
   VoteWtr::VoteWtr(const dds::domain::DomainParticipant participant,
-		   RedundancyInfo* redundancy_info_obj,
+		   RedundancyInfo* redundancy_db_obj,
 		   bool periodic,
 		   dds::core::Duration period)
     : Writer(participant, "VoteType", \
 	     "publisher::vote_topic_writer",\
 	     periodic, period)
   {
-     this->my_redundancy_info_obj = redundancy_info_obj;
-     this->setSampleField("SourceHBwriterHandle", redundancy_info_obj->getMyGuid());
+     this->redundancy_db_obj = redundancy_db_obj;
+     this->setSampleField("SourceHBwriterHandle", redundancy_db_obj->getMyGuid());
      // initialize all vote samples to NULL guid (so we don't have to worry
      // about accessing an N/A field
      for (int i=0; i<3; i++) {
 	this->setSampleField(roll_string_map[i], \
-			     my_redundancy_info_obj->getNullGuid());
+			     redundancy_db_obj->getNullGuid());
       }
 
   };
@@ -406,33 +406,33 @@ namespace MODULE
     // set Initialize all votes to null_guid
     for (int i=0; i<3; i++)
       this->setSampleField(roll_string_map[roll_array[i]],		\
-			   my_redundancy_info_obj->getNullGuid());      
+			   redundancy_db_obj->getNullGuid());      
 
     // Set the number of trackers we are voting for (non-null guids)
     this->getMyDataSample()->value("NumberOfTrackers", \
-				    my_redundancy_info_obj->numberOfTrackers());
+				    redundancy_db_obj->numberOfTrackers());
 
 			       
     // set the votes according to if the system was operational or not.
     //
-    if (!my_redundancy_info_obj->isLateJoiner()) //was not operational,
+    if (!redundancy_db_obj->isLateJoiner()) //was not operational,
       // no rolls assigned. Assign them in order of sorted guids
       // lowest {Primary} to higher
-      for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++) {
-	my_redundancy_info_obj->getTrackerState_ptr(i)->roll=roll_array[i];
+      for (int i=0; i<redundancy_db_obj->numberOfTrackers(); i++) {
+	redundancy_db_obj->getTrackerState_ptr(i)->roll=roll_array[i];
       }
     // else was operational and the durable votes have fill the db
     // At this point the ordered db has all rolls assigned
  
-    for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++)
+    for (int i=0; i<redundancy_db_obj->numberOfTrackers(); i++)
 	  this->setSampleField( \
-		      roll_string_map[my_redundancy_info_obj->getTrackerState_ptr(i)->roll], \
-		      my_redundancy_info_obj->getTrackerState_ptr(i)->guid
+		      roll_string_map[redundancy_db_obj->getTrackerState_ptr(i)->roll], \
+		      redundancy_db_obj->getTrackerState_ptr(i)->guid
 				);
 
     // We've populated the Vote Topic with our Selections according to the voting algorithm.
     // Now Read our vote topic back and register our own vote (since we won't receive it)
-    for (int l=0; l<my_redundancy_info_obj->numberOfTrackers(); l++) {
+    for (int l=0; l<redundancy_db_obj->numberOfTrackers(); l++) {
 
       std::vector<uint8_t> seq_values_p = getMyDataSample()->get_values<uint8_t>(roll_string_map[l]);
 
@@ -444,13 +444,13 @@ namespace MODULE
 
       rti::core::Guid guid= convertIArrayToGuid(iarr);
       // update my vote array based on the roll (i)
-      for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++)
-	if (guid == my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
-	  my_redundancy_info_obj->getTrackerState_ptr(i)->
-	    votes[my_redundancy_info_obj->getTrackerState_ptr(i)->roll]++;
+      for (int i=0; i<redundancy_db_obj->numberOfTrackers(); i++)
+	if (guid == redundancy_db_obj->getTrackerState_ptr(i)->guid)
+	  redundancy_db_obj->getTrackerState_ptr(i)->
+	    votes[redundancy_db_obj->getTrackerState_ptr(i)->roll]++;
 	
     } // for
-    my_redundancy_info_obj->getMyTrackerStatePtr()->Ivoted=true;    
+    redundancy_db_obj->getMyTrackerStatePtr()->Ivoted=true;    
   
     // cast our vote - write the vote sample
     this->topicWriter.write(*this->getMyDataSample());
@@ -458,10 +458,10 @@ namespace MODULE
 
     
   VoteRdr::VoteRdr(const dds::domain::DomainParticipant participant,
-		   RedundancyInfo* redundancy_info_obj)
+		   RedundancyInfo* redundancy_db_obj)
     : Reader(participant, "VoteType", "subscriber::vote_topic_reader")
   {
-    this->my_redundancy_info_obj = redundancy_info_obj;    
+    this->redundancy_db_obj = redundancy_db_obj;    
   };
   
 
@@ -503,7 +503,7 @@ namespace MODULE
     //   themselves as a late joiner.
     //    
     std::cout << "\nReceived Vote during State "
-	      << state_string_map[my_redundancy_info_obj->smState()];
+	      << state_string_map[redundancy_db_obj->smState()];
 
     bool tracker_voted {true}; // set true so vote ignored by default
     bool known_tracker {false};
@@ -516,7 +516,7 @@ namespace MODULE
 
     rti::core::Guid this_guid, guid[3];
     for (int i=0; i<3; i++) // initialize guid array to null Guid
-      guid[i]=my_redundancy_info_obj->getNullGuid(); 
+      guid[i]=redundancy_db_obj->getNullGuid(); 
 
     // Verify source and integrity of the vote.
     // Verify Source: The vote must be from a known tracker, (ignore
@@ -528,11 +528,11 @@ namespace MODULE
     std::cout << " From: " << this_guid << std::endl;
     for (int i=0; i<3; i++) { // check to 3 (possible null Guid compare
       if (this_guid == \
-	  my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
+	  redundancy_db_obj->getTrackerState_ptr(i)->guid) {
 	known_tracker = true;
-	if (!my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted) {
+	if (!redundancy_db_obj->getTrackerState_ptr(i)->Ivoted) {
 	  tracker_voted = false; // tracker had not previously voted
-	  my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted = true;
+	  redundancy_db_obj->getTrackerState_ptr(i)->Ivoted = true;
 	} // else we'll ignore this vote (see if (!tracker_voted) below)
       }
     }
@@ -558,7 +558,7 @@ namespace MODULE
 	// compare guid[i] to all prior voted guids for valid, non-dup
 	for (int k=0; k<i; k++) 
 	  if (guid[i]==guid[k] || \
-	      guid[i]==my_redundancy_info_obj->getNullGuid())
+	      guid[i]==redundancy_db_obj->getNullGuid())
 	    goto bad_vote;
       }
     }
@@ -568,7 +568,7 @@ namespace MODULE
     for (int i=0; i<number_voted_trackers; i++) {
       known_tracker = false;
       for (int k=0; k<3; k++) 
-	if (guid[i] ==  my_redundancy_info_obj->getTrackerState_ptr(k)->guid)
+	if (guid[i] ==  redundancy_db_obj->getTrackerState_ptr(k)->guid)
 	  known_tracker = true;
       if (!known_tracker)
 	goto bad_vote;  
@@ -578,7 +578,7 @@ namespace MODULE
     std::cout << "Vericiation complete " << std::endl;
       
     // At this point the vote is validated. Process it.
-    switch (my_redundancy_info_obj->smState()) {
+    switch (redundancy_db_obj->smState()) {
 
     case INITIALIZE:
     case POSTINIT:	
@@ -589,10 +589,10 @@ namespace MODULE
 	// see who's Guid we are getting a vote for?
 	for (int i=0; i<3; i++) { // go through all tracker ordinals
 	  if (guid[roll_idx] ==						\
-	      my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
-	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[roll_idx] \
+	      redundancy_db_obj->getTrackerState_ptr(i)->guid) {
+	    redundancy_db_obj->getTrackerState_ptr(i)->votes[roll_idx] \
 	      = number_voted_trackers; // We'll add our vote when we vote()
-	    my_redundancy_info_obj->getTrackerState_ptr(i)->roll 
+	    redundancy_db_obj->getTrackerState_ptr(i)->roll 
 	      = roll_array[roll_idx]; // set incumbant roll
 	  }
 	}
@@ -602,16 +602,16 @@ namespace MODULE
       // Set our own vote. Note number_of_voted trackers (1 or 2) tells us
       // if we are voting ourselves Secondary or Tertiary.
       // Roll enums are 0 based, so number_of trackers are 1, 2, 3.
-      my_redundancy_info_obj->getMyTrackerStatePtr()->roll= \
+      redundancy_db_obj->getMyTrackerStatePtr()->roll= \
 	roll_array[number_voted_trackers];
       // note: we add our own vote to ourselves when we vote()
-      my_redundancy_info_obj-> getMyTrackerStatePtr()-> \
+      redundancy_db_obj-> getMyTrackerStatePtr()-> \
 	votes[number_voted_trackers] = number_voted_trackers;
       // no need to wait for next vote or 10 sec if the system had been
       // operational as we are only adding this tracker back.
-      my_redundancy_info_obj->setLateJoiner(true);	
+      redundancy_db_obj->setLateJoiner(true);	
       std::cout << "Vote Reader Late Joining registered vote state" << std::endl;
-      my_redundancy_info_obj->printVoteResults();
+      redundancy_db_obj->printVoteResults();
       break;
 
     case VOTE:
@@ -622,9 +622,9 @@ namespace MODULE
 	// see who's Guid we are getting a vote for?
 	for (int i=0; i<number_voted_trackers; i++) {
 	  if (guid[roll_idx] ==						\
-	      my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
+	      redundancy_db_obj->getTrackerState_ptr(i)->guid)
 	    // increment the vote for tracker based on the roll we are checking
-	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[roll_idx]++;
+	    redundancy_db_obj->getTrackerState_ptr(i)->votes[roll_idx]++;
 	}
       }  // for roll_idx;
       break;
@@ -635,7 +635,7 @@ namespace MODULE
       // interested in is to update our tracker db with the late joins roll.      
       for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++)
 	if (this_guid == guid[roll_idx])
-	  my_redundancy_info_obj->getTrackerState_ptr(roll_idx)->roll \
+	  redundancy_db_obj->getTrackerState_ptr(roll_idx)->roll \
 	    = roll_array[roll_idx];
       break;
     
@@ -647,7 +647,7 @@ namespace MODULE
     } // if tracker did not vote
 
   done:
-    my_redundancy_info_obj->incVotesIn(); //  inc total vote tally
+    redundancy_db_obj->incVotesIn(); //  inc total vote tally
     return;
     
   bad_vote:
