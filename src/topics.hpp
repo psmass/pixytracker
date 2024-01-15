@@ -155,6 +155,8 @@ namespace MODULE
 		  << this->ordered_array_tracker_state_ptrs[i]->votes[1]
 		  << "\nVotes for Tertiary: "
 		  << this->ordered_array_tracker_state_ptrs[i]->votes[2]
+		  << "\nIvoted today: "
+		  << this->ordered_array_tracker_state_ptrs[i]->Ivoted
 		  << std::endl;
     }
     
@@ -223,7 +225,7 @@ namespace MODULE
     // indicates this tracker is a late joiner and should not vote
     // and should silently join at next available roll
     bool late_joiner {false};
-    int votes_expected {3}; // changes by late joiners 
+    int votes_expected {3}; // changes number unique HBs + 1 
     
     // The ordered_array_tracker_state_ptrs is always kept ordered
     // based on guid of each tracker (smallest to largest).

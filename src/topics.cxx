@@ -446,9 +446,11 @@ namespace MODULE
       // update my vote array based on the roll (i)
       for (int i=0; i<my_redundancy_info_obj->numberOfTrackers(); i++)
 	if (guid == my_redundancy_info_obj->getTrackerState_ptr(i)->guid)
-	  my_redundancy_info_obj->getTrackerState_ptr(i)->votes[i]++;
+	  my_redundancy_info_obj->getTrackerState_ptr(i)->
+	    votes[my_redundancy_info_obj->getTrackerState_ptr(i)->roll]++;
 	
     } // for
+    my_redundancy_info_obj->getMyTrackerStatePtr()->Ivoted=true;    
   
     // cast our vote - write the vote sample
     this->topicWriter.write(*this->getMyDataSample());
@@ -509,6 +511,8 @@ namespace MODULE
     int number_voted_trackers;
 
     number_voted_trackers  = (int)data.value<int32_t>("NumberOfTrackers");
+    std::cout << " Number of trackers in vote: "
+	      << number_voted_trackers;
 
     rti::core::Guid this_guid, guid[3];
     for (int i=0; i<3; i++) // initialize guid array to null Guid
@@ -522,16 +526,21 @@ namespace MODULE
     //
     this_guid = this->extractGuid(data, "SourceHBwriterHandle");
     std::cout << " From: " << this_guid << std::endl;
-    for (int i=0; i<number_voted_trackers; i++) {
+    for (int i=0; i<3; i++) { // check to 3 (possible null Guid compare
       if (this_guid == \
 	  my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
+	known_tracker = true;
 	if (!my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted) {
 	  tracker_voted = false; // tracker had not previously voted
 	  my_redundancy_info_obj->getTrackerState_ptr(i)->Ivoted = true;
-	}
-	break;
+	} // else we'll ignore this vote (see if (!tracker_voted) below)
       }
     }
+    if (!known_tracker) {
+      std::cerr << "Received a Vote from unknown tracker" << std::endl;
+      goto bad_vote;
+    }
+    
     std::cout << "Verified Source is consistent" << std::endl;
   
     // Verify integrity of the vote: A valid tracks votes are all unique
@@ -540,23 +549,23 @@ namespace MODULE
     //
     if (!tracker_voted) { // complete validation of the vote
       for (int i=0; i<number_voted_trackers; i++) {
-      // verify the integrity of the vote: no dupplicate votes
-      // or votes for nullGuid
-      guid[i] = this->extractGuid(data, roll_string_map[i]);
-      std::cout << "Extracted from vote: " << guid[i]
-		<< " For roll: " << roll_string_map[i]
-		<< std::endl;
-      // compare guid[i] to all prior voted guids for valid, non-dup
-      for (int k=0; k<i; k++) 
-	if (guid[i]==guid[k] || \
-	    guid[i]==my_redundancy_info_obj->getNullGuid())
-	  goto bad_vote;
+	// verify the integrity of the vote: no dupplicate votes
+	// or votes for nullGuid
+	guid[i] = this->extractGuid(data, roll_string_map[i]);
+	std::cout << "Extracted from vote: " << guid[i]
+		  << " For roll: " << roll_string_map[i]
+		  << std::endl;
+	// compare guid[i] to all prior voted guids for valid, non-dup
+	for (int k=0; k<i; k++) 
+	  if (guid[i]==guid[k] || \
+	      guid[i]==my_redundancy_info_obj->getNullGuid())
+	    goto bad_vote;
       }
     }
     std::cout << "Verified no votes for  dups or null Guids" << std::endl;
       
     // verify all guids voted for were for known trackers
-    for (int i=1; i<number_voted_trackers; i++) {
+    for (int i=0; i<number_voted_trackers; i++) {
       known_tracker = false;
       for (int k=0; k<3; k++) 
 	if (guid[i] ==  my_redundancy_info_obj->getTrackerState_ptr(k)->guid)
@@ -582,7 +591,7 @@ namespace MODULE
 	  if (guid[roll_idx] ==						\
 	      my_redundancy_info_obj->getTrackerState_ptr(i)->guid) {
 	    my_redundancy_info_obj->getTrackerState_ptr(i)->votes[roll_idx] \
-	      = number_voted_trackers+1; // add my vote to the same
+	      = number_voted_trackers; // We'll add our vote when we vote()
 	    my_redundancy_info_obj->getTrackerState_ptr(i)->roll 
 	      = roll_array[roll_idx]; // set incumbant roll
 	  }
@@ -595,8 +604,9 @@ namespace MODULE
       // Roll enums are 0 based, so number_of trackers are 1, 2, 3.
       my_redundancy_info_obj->getMyTrackerStatePtr()->roll= \
 	roll_array[number_voted_trackers];
+      // note: we add our own vote to ourselves when we vote()
       my_redundancy_info_obj-> getMyTrackerStatePtr()-> \
-	votes[number_voted_trackers] = number_voted_trackers+1;
+	votes[number_voted_trackers] = number_voted_trackers;
       // no need to wait for next vote or 10 sec if the system had been
       // operational as we are only adding this tracker back.
       my_redundancy_info_obj->setLateJoiner(true);	
