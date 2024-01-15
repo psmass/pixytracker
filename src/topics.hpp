@@ -130,12 +130,6 @@ namespace MODULE
     
     void lostTracker(int tracker_ordinal);
     void assessVoteResults(void);
-
-    void clearVotes(void) { // clear votes and Ivoted for each tracker
-    for (int i=0; i<this->number_of_trackers; i++) {
-      this->clearVotesTracker(i);
-      }
-    }
       
     TrackerState* getTrackerState_ptr(int i) {return ordered_array_tracker_state_ptrs[i];};
     // Each trackers own state is kept in array_tracker_state[0] 
@@ -200,13 +194,17 @@ namespace MODULE
       
       
   private:
-    void clearVotesTracker(int tracker_indx) {
-	this->ordered_array_tracker_state_ptrs[tracker_indx]->votes[0]=0;
-	this->ordered_array_tracker_state_ptrs[tracker_indx]->votes[1]=0;
-	this->ordered_array_tracker_state_ptrs[tracker_indx]->votes[2]=0;
-        this->ordered_array_tracker_state_ptrs[tracker_indx]->Ivoted=0;
-	this->number_of_votes_in = 1;  // init val - our own tracker
+
+    void clearVotes(void) { // clear votes and Ivoted for each tracker
+      for (int i=0; i<this->number_of_trackers; i++) {
+      	this->ordered_array_tracker_state_ptrs[i]->votes[0]=0;
+	this->ordered_array_tracker_state_ptrs[i]->votes[1]=0;
+	this->ordered_array_tracker_state_ptrs[i]->votes[2]=0;
+        this->ordered_array_tracker_state_ptrs[i]->Ivoted=0;
+      }
+      this->number_of_votes_in = 1;  // init val - our own tracker
     }
+
 
     enum SM_States sm_state {INITIALIZE}; // keep this trackers State Machine State
     int ten_sec_count {TEN_SEC}; // ten sec count based on main loop period

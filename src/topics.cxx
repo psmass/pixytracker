@@ -140,7 +140,6 @@ namespace MODULE
       this->ff_guid;
     this->ordered_array_tracker_state_ptrs[tracker_indx]->roll = \
       UNASSIGNED;
-    this->clearVotesTracker(tracker_indx); // clears Ivoted as well
     this->ordered_array_tracker_state_ptrs[tracker_indx]->inconsistent_vote=FAILED;
     this->number_of_trackers--; 
     this->sortSaveGuids(); // force reordering of the array
@@ -214,7 +213,8 @@ namespace MODULE
 	    largest_roll_vote_tally = roll_vote;
 	    largest_roll_vote_idx = roll_idx;
 	}
-	// This checks for ALL inconsistent votes and marks faulted tracker
+	// This checks for inconsistent / non unanomous vote, mark faulted tracker
+	this->ordered_array_tracker_state_ptrs[ord]->inconsistent_vote=OK;
 	if(roll_vote <this->number_of_trackers) { // not unanomous
 	  this->ordered_array_tracker_state_ptrs[ord]->inconsistent_vote=FAILED;
 	}
@@ -224,6 +224,7 @@ namespace MODULE
       this->ordered_array_tracker_state_ptrs[ord]->roll=roll_array[largest_roll_vote_idx];
     } // for ord
     this->printVoteResults();
+    this->clearVotes(); // clear for next vote
   };
 
      
@@ -581,7 +582,7 @@ namespace MODULE
     switch (redundancy_db_obj->smState()) {
 
     case INITIALIZE:
-    case POSTINIT:	
+    case POSTINIT:
       // for each roll see which tracker is currently assigned and give
       // it the number of trackers plus 1 (our vote)
       

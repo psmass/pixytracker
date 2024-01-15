@@ -186,10 +186,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// or inconsistent trackers. Set Pixy_Servo_Strength based on
 	// results: PRIMARY 30, SECONDARY 20, TERTIARY 10
 	redundancy_db.assessVoteResults();
-	// clear voting immediatly after tally for next potential vote
-	// not in vote state, since votes are durable and may already
-	// be in upon restart.
-	redundancy_db.clearVotes(); 
 	//redundancy_db.printSortedTrackers();
 
 	// change my ownership strength based on my roll.
@@ -199,7 +195,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	servo_writer.getMyDataWriter().qos(writer_qos);
 	servo_writer.enable(); // enable after we've set the strength
 
-	//redundancy_db.printVoteResults();
 	redundancy_db.setSM_State(STEADY_STATE);
 	cycle_cnt=0; // next cycle triggers a print upon entry to STEADY_STATE
 	break;
