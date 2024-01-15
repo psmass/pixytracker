@@ -57,7 +57,8 @@ namespace MODULE
     rti::core::Guid ff_guid= convertIArrayToGuid(iarr);
     this->ff_guid = ff_guid; // save this guid
     
-    this->array_tracker_states[0].state=OPERATIONAL; // set myself operational   
+    this->array_tracker_states[0].operational_hb=OK; // set myself operational
+    //     this->array_tracker_states[0].guid (my guid) set in HB writer c'tor
     this->array_tracker_states[1].guid=ff_guid;
     this->array_tracker_states[2].guid=ff_guid;
 
@@ -140,7 +141,7 @@ namespace MODULE
     this->ordered_array_tracker_state_ptrs[tracker_indx]->roll = \
       UNASSIGNED;
     this->clearVotesTracker(tracker_indx); // clears Ivoted as well
-    this->ordered_array_tracker_state_ptrs[tracker_indx]->state=FAILED;
+    this->ordered_array_tracker_state_ptrs[tracker_indx]->inconsistent_vote=FAILED;
     this->number_of_trackers--; 
     this->sortSaveGuids(); // force reordering of the array
     this->is_new_tracker = false; // vote null Guids for lost tracker
@@ -213,10 +214,9 @@ namespace MODULE
 	    largest_roll_vote_tally = roll_vote;
 	    largest_roll_vote_idx = roll_idx;
 	}
-	// check for single fault cases (2,1,0) and (2,0,1)
-	// mark faulted tracker
-	if(this->number_of_trackers==3 && roll_vote == 1) { 
-	  this->ordered_array_tracker_state_ptrs[ord]->state=FAILED;
+	// This checks for ALL inconsistent votes and marks faulted tracker
+	if(roll_vote <this->number_of_trackers) { // not unanomous
+	  this->ordered_array_tracker_state_ptrs[ord]->inconsistent_vote=FAILED;
 	}
       } // for roll_idx
 
@@ -355,7 +355,7 @@ namespace MODULE
 	if (this->redundancy_db_obj->getTrackerState_ptr(i)->guid == \
 	    this->redundancy_db_obj->getNullGuid()) {
 	  this->redundancy_db_obj->getTrackerState_ptr(i)->guid = hb_guid;
-	  this->redundancy_db_obj->getTrackerState_ptr(i)->state = OPERATIONAL;
+	  this->redundancy_db_obj->getTrackerState_ptr(i)->operational_hb = OK;
 	  this->redundancy_db_obj->getTrackerState_ptr(i)->hbDeadlineCnt = 1;
 	  this->redundancy_db_obj->sortSaveGuids();
 	  this->redundancy_db_obj->setNewTracker(true);

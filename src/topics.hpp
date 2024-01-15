@@ -50,7 +50,7 @@ namespace MODULE
   
   #define TEN_SEC 40 // main loop clock tick is 250ms. 40 = ten sec
   #define ONE_SEC 4
-  enum State {FAILED = 0, OPERATIONAL};
+  enum State {FAILED = 0, OK};
   enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
   enum SM_States {INITIALIZE, POSTINIT, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, \
 		  SHUT_DOWN, ERROR};
@@ -60,7 +60,8 @@ namespace MODULE
     bool Ivoted {false}; // track if this tracker vote has been processed already
     int votes[3] {0, 0, 0}; // votes for tracker w/Guid {Primary, Secondary, Tertiary}
     int hbDeadlineCnt {0};
-    enum State state {FAILED};
+    enum State inconsistent_vote {FAILED}; // consistency issue with trackers vote
+    enum State operational_hb {FAILED}; // indicates the trackers HB looks good
     Roll roll {UNASSIGNED};
 
   }; 
@@ -179,10 +180,10 @@ namespace MODULE
       std::cout << "|";
       
       for (int i=0; i<3; i++) {
-	if (this->ordered_array_tracker_state_ptrs[i]->state == FAILED) {
+	if (this->ordered_array_tracker_state_ptrs[i]->operational_hb == FAILED) {
 	  std::cout << "FAILED (Red)|";
 	}
-	if (this->ordered_array_tracker_state_ptrs[i]->state == OPERATIONAL) {
+	if (this->ordered_array_tracker_state_ptrs[i]->operational_hb == OK) {
 	  if (i+1 == this->my_ordinal) 
 	    std::cout << "  OK (Grn)  |";
           else 

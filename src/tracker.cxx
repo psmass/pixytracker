@@ -138,6 +138,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// Pauses beifly to ensure a late joiner has process durable votes first
 	// in the case heartbeats came more quickly and moved us out of INITIALIZE
 	std::cout << "\nSTATE: POSTINIT" << std::endl;
+	std::cout << redundancy_db.getMyGuid() << std::endl;
 	
 	rti::util::sleep(dds::core::Duration(1));
 
@@ -147,6 +148,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       case VOTE:
 	// this state tranitions quickly once we vote and ensure one vote
 	std::cout << "\nSTATE: VOTING" << std::endl;
+	std::cout << redundancy_db.getMyGuid() << std::endl;
 	
 	// For first time system up, all the trackers will see the other
 	// two trackers heartbeats or 10sec expires after a new HB.
@@ -165,6 +167,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	if (!(cycle_cnt++ %5)) {
 	  cycle_cnt = 1;
 	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
+	  std::cout << redundancy_db.getMyGuid() << std::endl;
 	  std::cout << redundancy_db.votesIn()
 		    << " "
 		    << redundancy_db.numberOfTrackers()
@@ -178,6 +181,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 
       case VOTE_RESULTS: 
 	std::cout << "\nSTATE: ASSESSING VOTING RESULTS" << std::endl;
+	std::cout << redundancy_db.getMyGuid() << std::endl;
 	// Assess if all trackers are consistent - fault any missing
 	// or inconsistent trackers. Set Pixy_Servo_Strength based on
 	// results: PRIMARY 30, SECONDARY 20, TERTIARY 10
@@ -204,6 +208,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// print the first time we enter state or if new tracker
 	if (redundancy_db.isNewTracker() or cycle_cnt==0) {
 	  std::cout << "STATE: STEADY_STATE" << std::endl;
+	  std::cout << redundancy_db.getMyGuid() << std::endl;
 	  redundancy_db.printMyState();
 	  redundancy_db.setNewTracker(false);
 	}
