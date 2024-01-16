@@ -515,6 +515,9 @@ namespace MODULE
   rti::core::Guid VoteRdr::extractGuid (dds::core::xtypes::DynamicData& sample,
 					std::string topicField)
   {
+    rti::core::Guid guid;
+    
+    if (topicField != " NotVoted Yet") {
       std::vector<uint8_t> seq_values_p = sample.get_values<uint8_t>(topicField);
     
       uint8_t iarr[16];
@@ -522,9 +525,14 @@ namespace MODULE
 	iarr[i]=seq_values_p.back();
 	seq_values_p.pop_back();
       }
-
-      rti::core::Guid guid= convertIArrayToGuid(iarr);
-      return (guid);
+     
+      guid = convertIArrayToGuid(iarr);
+    } else {
+      std::cerr << "ERROR: Extract -  Invalid Topic Field: "
+	        << topicField << std::endl;
+      guid = redundancy_db_obj->getNullGuid();
+    }	     
+    return (guid);
   }
 
 
@@ -561,7 +569,7 @@ namespace MODULE
     std::cout << " Number of trackers in vote: "
 	      << number_voted_trackers;
 
-    rti::core::Guid this_guid, guid[3];
+    rti::core::Guid source_guid, guid[3];
     for (int i=0; i<3; i++) // initialize guid array to null Guid
       guid[i]=redundancy_db_obj->getNullGuid(); 
 
@@ -571,10 +579,10 @@ namespace MODULE
     // (not supposed to), or dupplicate votes (i.e. if a the same
     // known tracker voted twice (technically an error).
     //
-    this_guid = this->extractGuid(data, "SourceHBwriterHandle");
-    std::cout << " From: " << this_guid << std::endl;
+    source_guid = this->extractGuid(data, "SourceHBwriterHandle");
+    std::cout << " From: " << source_guid << std::endl;
     for (int i=0; i<3; i++) { // check to 3 (possible null Guid compare
-      if (this_guid == \
+      if (source_guid == \
 	  redundancy_db_obj->getTrackerState_ptr(i)->guid) {
 	known_tracker = true;
 	if (!redundancy_db_obj->getTrackerState_ptr(i)->Ivoted) {
@@ -668,30 +676,45 @@ namespace MODULE
     case WAIT_VOTES_IN:
       std::cout << "System just up process new vote - " << std::endl;
       // go through and extact the vote Primary to Tertiary
-      for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++) {
+      for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++) 
 	// see who's Guid we are getting a vote for?
-	for (int i=0; i<number_voted_trackers; i++) {
-	  if (guid[roll_idx] ==						\
-	      redundancy_db_obj->getTrackerState_ptr(i)->guid)
+	for (int i=0; i<number_voted_trackers; i++)
+	  if (guid[roll_idx] ==	redundancy_db_obj->getTrackerState_ptr(i)->guid)
 	    // increment the vote for tracker based on the roll we are checking
 	    redundancy_db_obj->getTrackerState_ptr(i)->votes[roll_idx]++;
-	}
-      }  // for roll_idx;
+	
       redundancy_db_obj->incVotesIn(); //  inc total vote tally
       break;
       
     case VOTE_RESULTS:
     case STEADY_STATE:
+      int db_idx;
       // A vote received after voting is a late joining Tracker. All were
-      // interested in is to update our tracker db with the late joins roll.      
+      // interested in is to update our tracker db with the late joiner's roll.      
       for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++)
-	if (this_guid == guid[roll_idx])
-	  redundancy_db_obj->getTrackerState_ptr(roll_idx)->roll \
-	    = roll_array[roll_idx];
+	if (guid[roll_idx]==source_guid) {
+	  // roll_idx the roll, now find the tracker in the db
+	  for (db_idx = 0; db_idx<3; db_idx++)
+	    if (redundancy_db_obj->getTrackerState_ptr(db_idx)->guid\
+		== source_guid)
+	      break;
+	  //redundancy_db_obj->getTrackerState_ptr(roll_idx)->roll	\
+	  //  = roll_array[roll_idx];
+	  // don't trust thier vote entirely - update the roll for the late joining
+	  // tacker, not based on it's vote, but upon what roll we have available
+	  redundancy_db_obj->getTrackerState_ptr(db_idx)->roll	\
+	    =roll_array[redundancy_db_obj->numberOfTrackers()-1];
+	  std::cout << "Updating Steady State Guid: "
+		    << redundancy_db_obj->getTrackerState_ptr(db_idx)->guid
+		    <<" With Roll: "
+		    << roll_string_map[redundancy_db_obj->getTrackerState_ptr(db_idx)->roll]
+		    << std::endl;
+	  redundancy_db_obj->printSortedTrackers();
+	}
       // we are not revoting in this case so keep  clear votes clear
       redundancy_db_obj->clearVotes();
       break;
-    
+ 
     case SHUT_DOWN:
     case ERROR:
     default:// do nothing for these states
@@ -705,7 +728,7 @@ namespace MODULE
     
   bad_vote:
     std::cerr << "Vote found inconsistent from source: "
-	      << this_guid
+	      << source_guid
 	      << std::endl;
     //TODO: Mark that source as failed and ignore heartbeats  
   };
