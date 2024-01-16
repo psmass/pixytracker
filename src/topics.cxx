@@ -465,9 +465,10 @@ namespace MODULE
     if (!redundancy_db_obj->isLateJoiner()) //was not operational,
       // no rolls assigned. Assign them in order of sorted guids
       // lowest {Primary} to higher
-      for (int i=0; i<redundancy_db_obj->numberOfTrackers(); i++) {
+      for (int i=0; i<redundancy_db_obj->numberOfTrackers(); i++) 
 	redundancy_db_obj->getTrackerState_ptr(i)->roll=roll_array[i];
-      }
+
+    redundancy_db_obj->setLateJoiner(false); // clear once voted
     // else was operational and the durable votes have fill the db
     // At this point the ordered db has all rolls assigned
  
