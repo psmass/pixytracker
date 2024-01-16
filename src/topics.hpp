@@ -57,12 +57,12 @@ namespace MODULE
   
   struct TrackerState {
     rti::core::Guid guid;
-    bool Ivoted {false}; // track if this tracker vote has been processed already
-    int votes[3] {0, 0, 0}; // votes for tracker w/Guid {Primary, Secondary, Tertiary}
     int hbDeadlineCnt {0};
     enum State inconsistent_vote {FAILED}; // consistency issue with trackers vote
     enum State operational_hb {FAILED}; // indicates the trackers HB looks good
     Roll roll {UNASSIGNED};
+    int votes[3] {0, 0, 0}; // votes for tracker roll
+    bool Ivoted {false}; // track if this tracker vote has been processed already
 
   }; 
 
@@ -117,17 +117,34 @@ namespace MODULE
 	return true;
       else
 	return false;
-    };
+    }
 
     void resetTenSecCount(void) { this->ten_sec_count = TEN_SEC; }
 
-    void incVotesIn(void) {this->number_of_votes_in++;}
-    void setVotesIn(int votes) { this->number_of_votes_in = votes;}
+    void incVotesIn(void) { this->number_of_votes_in++;}
     int votesIn(void) {return this->number_of_votes_in;}
     void clearVotesIn(void) {this->number_of_votes_in = 1;} // our vote
+    void clearIvoted(void) {
+      for (int i=0; i<this->number_of_trackers; i++)
+	this->array_tracker_states[i].Ivoted = false;
+    }
+
+    void clearVotes(void) { // clear votes and Ivoted for each tracker
+      for (int i=0; i<3; i++) {
+      	this->ordered_array_tracker_state_ptrs[i]->votes[0]=0;
+      	this->ordered_array_tracker_state_ptrs[i]->votes[1]=0;
+      	this->ordered_array_tracker_state_ptrs[i]->votes[2]=0;
+        this->ordered_array_tracker_state_ptrs[i]->Ivoted=0;
+      }
+      this->number_of_votes_in = 1;  // init val - our own tracker
+    }
+
     void setVotesExpected(int ve) {this->votes_expected = ve;}
     int votesExpected(void) {return this->votes_expected;}
-    
+    bool validateBallot(void);
+    void printFullBallot(void);
+    void printBallotVoteTracker(int t);
+        
     void lostTracker(int tracker_ordinal);
     void assessVoteResults(void);
       
@@ -135,26 +152,6 @@ namespace MODULE
     // Each trackers own state is kept in array_tracker_state[0] 
     TrackerState* getMyTrackerStatePtr(void) { return &array_tracker_states[0]; }
 
-    void clearIvoted(void) {
-      for (int i=0; i<this->number_of_trackers; i++)
-	this->array_tracker_states[i].Ivoted = false;
-    };
-
-    void printVoteResults(void) {
-      for (int i=0; i<this->numberOfTrackers(); i++)
-	std::cout << "\nFor Tracker: "
-		  << this->ordered_array_tracker_state_ptrs[i]->guid
-		  << "\nVotes for Primary: "
-		  << this->ordered_array_tracker_state_ptrs[i]->votes[0]
-		  << "\nVotes for Secondary: "
-		  << this->ordered_array_tracker_state_ptrs[i]->votes[1]
-		  << "\nVotes for Tertiary: "
-		  << this->ordered_array_tracker_state_ptrs[i]->votes[2]
-		  << "\nIvoted today: "
-		  << this->ordered_array_tracker_state_ptrs[i]->Ivoted
-		  << std::endl;
-    }
-    
     void printSortedTrackers(void);
 
     void printMyState(void) {
@@ -194,18 +191,6 @@ namespace MODULE
       
       
   private:
-
-    void clearVotes(void) { // clear votes and Ivoted for each tracker
-      for (int i=0; i<this->number_of_trackers; i++) {
-      	this->ordered_array_tracker_state_ptrs[i]->votes[0]=0;
-	this->ordered_array_tracker_state_ptrs[i]->votes[1]=0;
-	this->ordered_array_tracker_state_ptrs[i]->votes[2]=0;
-        this->ordered_array_tracker_state_ptrs[i]->Ivoted=0;
-      }
-      this->number_of_votes_in = 1;  // init val - our own tracker
-    }
-
-
     enum SM_States sm_state {INITIALIZE}; // keep this trackers State Machine State
     int ten_sec_count {TEN_SEC}; // ten sec count based on main loop period
 
@@ -365,7 +350,6 @@ namespace MODULE
 
   private:
     rti::core::Guid extractGuid(dds::core::xtypes::DynamicData& sample, std::string topicField);        RedundancyDb* redundancy_db_obj;
-
 
   };
 } // namespace MODULE

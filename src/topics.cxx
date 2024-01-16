@@ -164,7 +164,53 @@ namespace MODULE
     this->printSortedTrackers();
 
   }
-    
+  
+  void RedundancyDb::printBallotVoteTracker(int t) {
+	std::cout << "\nFor Tracker: " \
+		  << this->ordered_array_tracker_state_ptrs[t]->guid \
+		  << std::endl;
+	for (int i=0; i<3; i++)
+	  std::cout<< "Roll: " \
+		   << roll_string_map[i] \
+		   << " " \
+		   << this->ordered_array_tracker_state_ptrs[t]->votes[i] \
+		   << std::endl;
+  }
+
+  
+  void RedundancyDb::printFullBallot(void)
+  {
+      for (int i=0; i<this->numberOfTrackers(); i++)
+	this->printBallotVoteTracker(i);
+   }
+
+   
+  bool RedundancyDb::validateBallot(void)
+  {
+    // private function to ensure this trackers ballot (potential vote) is valid
+    // should be called once the ballot is ready for vote since it checks
+    // for unanomous vote, nothing more or less
+    int vote_tally[3] {0, 0, 0};
+    for (int i=0; i<this->number_of_trackers; i++) {
+      for (int roll_idx=0; roll_idx<3; roll_idx++) {
+	// if a 0 or number_of_trackers load the vote_tally[roll_idx]
+	if (this->ordered_array_tracker_state_ptrs[i]->votes[roll_idx] == this->number_of_trackers \
+	    or this->ordered_array_tracker_state_ptrs[i]->votes[roll_idx] == 0 ) {
+	  vote_tally[roll_idx] =this->ordered_array_tracker_state_ptrs[i]->votes[roll_idx];
+	} else {
+	  std::cerr << "ERROR: Ballot Inconsistent " << std::endl;
+	  this->printBallotVoteTracker(i);
+	}
+      }
+    }
+    // we verified each vote for a roll is either 0 or number_of_trackers
+    // now ensure no roll was voted twice
+    if (vote_tally[0]+vote_tally[1]+vote_tally[2] == this->number_of_trackers)
+      return true;
+    else
+      return false;
+  }
+
   
   void RedundancyDb::assessVoteResults(void)
   {
@@ -214,16 +260,16 @@ namespace MODULE
 	    largest_roll_vote_idx = roll_idx;
 	}
 	// This checks for inconsistent / non unanomous vote, mark faulted tracker
-	this->ordered_array_tracker_state_ptrs[ord]->inconsistent_vote=OK;
 	if(roll_vote <this->number_of_trackers) { // not unanomous
 	  this->ordered_array_tracker_state_ptrs[ord]->inconsistent_vote=FAILED;
-	}
+	} else
+	  this->ordered_array_tracker_state_ptrs[ord]->inconsistent_vote=OK;	  
       } // for roll_idx
 
       // assign the winning roll to this tracker
       this->ordered_array_tracker_state_ptrs[ord]->roll=roll_array[largest_roll_vote_idx];
     } // for ord
-    this->printVoteResults();
+    this->printFullBallot();
     this->clearVotes(); // clear for next vote
   };
 
@@ -583,16 +629,18 @@ namespace MODULE
 
     case INITIALIZE:
     case POSTINIT:
-      // for each roll see which tracker is currently assigned and give
-      // it the number of trackers plus 1 (our vote)
+      // for each tracker populate thier roll and  assign unanomous votes
+      // to 
       
       for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++) { 
 	// see who's Guid we are getting a vote for?
 	for (int i=0; i<3; i++) { // go through all tracker ordinals
 	  if (guid[roll_idx] ==						\
 	      redundancy_db_obj->getTrackerState_ptr(i)->guid) {
+	    // update with unanomous vote ofr the incumbant roll
 	    redundancy_db_obj->getTrackerState_ptr(i)->votes[roll_idx] \
 	      = number_voted_trackers; // We'll add our vote when we vote()
+	    // update their roll in my db
 	    redundancy_db_obj->getTrackerState_ptr(i)->roll 
 	      = roll_array[roll_idx]; // set incumbant roll
 	  }
@@ -608,11 +656,12 @@ namespace MODULE
       // note: we add our own vote to ourselves when we vote()
       redundancy_db_obj-> getMyTrackerStatePtr()-> \
 	votes[number_voted_trackers] = number_voted_trackers;
+      redundancy_db_obj->incVotesIn(); //  inc total vote tally
       // no need to wait for next vote or 10 sec if the system had been
       // operational as we are only adding this tracker back.
       redundancy_db_obj->setLateJoiner(true);	
       std::cout << "Vote Reader Late Joining registered vote state" << std::endl;
-      redundancy_db_obj->printVoteResults();
+      redundancy_db_obj->printFullBallot();
       break;
 
     case VOTE:
@@ -628,6 +677,7 @@ namespace MODULE
 	    redundancy_db_obj->getTrackerState_ptr(i)->votes[roll_idx]++;
 	}
       }  // for roll_idx;
+      redundancy_db_obj->incVotesIn(); //  inc total vote tally
       break;
       
     case VOTE_RESULTS:
@@ -638,6 +688,8 @@ namespace MODULE
 	if (this_guid == guid[roll_idx])
 	  redundancy_db_obj->getTrackerState_ptr(roll_idx)->roll \
 	    = roll_array[roll_idx];
+      // we are not revoting in this case so keep  clear votes clear
+      redundancy_db_obj->clearVotes();
       break;
     
     case SHUT_DOWN:
@@ -648,7 +700,7 @@ namespace MODULE
     } // if tracker did not vote
 
   done:
-    redundancy_db_obj->incVotesIn(); //  inc total vote tally
+    std::cout << "Vote Rdr processed vote, votes In: " <<  redundancy_db_obj->votesIn() << std::endl;
     return;
     
   bad_vote:
