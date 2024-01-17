@@ -25,8 +25,8 @@
 namespace MODULE
 {
   #define PERIODIC true
-  dds::core::Duration DEFAULT_PERIOD  {0,100000000}; // 100 ms default HB writer rate
-  dds::core::Duration MAINLOOP_PERIOD {0,250000000}; // 250 ms mainloop ensures 2 hbs per
+  dds::core::Duration DEFAULT_PERIOD  {0,250000000}; // 250 ms default HB writer rate
+  dds::core::Duration MAINLOOP_PERIOD {1,0}; // 1 sec mainloop ensures 2 hbs per
   
 void run_tracker_application(unsigned int tracked_channel) {
    // Create the participant

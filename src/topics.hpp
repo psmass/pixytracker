@@ -48,8 +48,8 @@ namespace MODULE
 */
 
   
-  #define TEN_SEC 40 // main loop clock tick is 250ms. 40 = ten sec
-  #define ONE_SEC 4
+  #define TEN_SEC 10 // main loop clock tick is 1sec. 10 = ten sec
+  #define ONE_SEC 1
   enum State {FAILED = 0, OK};
   enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
   enum SM_States {INITIALIZE, POSTINIT, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, \
