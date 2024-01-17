@@ -141,6 +141,7 @@ namespace MODULE
     this->ordered_array_tracker_state_ptrs[tracker_indx]->roll = \
       UNASSIGNED;
     this->ordered_array_tracker_state_ptrs[tracker_indx]->inconsistent_vote=FAILED;
+    this->ordered_array_tracker_state_ptrs[tracker_indx]->operational_hb=FAILED;
     this->number_of_trackers--; 
     this->sortSaveGuids(); // force reordering of the array
     this->is_new_tracker = false; // vote null Guids for lost tracker
@@ -691,29 +692,37 @@ namespace MODULE
     case STEADY_STATE:
       int db_idx;
       // A vote received after voting is a late joining Tracker. All were
-      // interested in is to update our tracker db with the late joiner's roll.      
-      for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++)
-	if (guid[roll_idx]==source_guid) {
-	  // roll_idx the roll, now find the tracker in the db
-	  for (db_idx = 0; db_idx<3; db_idx++)
-	    if (redundancy_db_obj->getTrackerState_ptr(db_idx)->guid\
-		== source_guid)
-	      break;
-	  //redundancy_db_obj->getTrackerState_ptr(roll_idx)->roll	\
-	  //  = roll_array[roll_idx];
-	  // don't trust thier vote entirely - update the roll for the late joining
-	  // tacker, not based on it's vote, but upon what roll we have available
-	  redundancy_db_obj->getTrackerState_ptr(db_idx)->roll	\
-	    =roll_array[redundancy_db_obj->numberOfTrackers()-1];
-	  std::cout << "Updating Steady State Guid: "
-		    << redundancy_db_obj->getTrackerState_ptr(db_idx)->guid
-		    <<" With Roll: "
-		    << roll_string_map[redundancy_db_obj->getTrackerState_ptr(db_idx)->roll]
-		    << std::endl;
-	  redundancy_db_obj->printSortedTrackers();
-	}
-      // we are not revoting in this case so keep  clear votes clear
-      redundancy_db_obj->clearVotes();
+      // interested in is to update our tracker db with the late joiner's roll.
+      // Verify we have room in our db for a late joining tracker
+      // newTracker set in HB reader if we have space
+      if (redundancy_db_obj->isNewTracker()) {
+	redundancy_db_obj->setNewTracker(false);
+	for (int roll_idx=0; roll_idx<number_voted_trackers; roll_idx++)
+	  if (guid[roll_idx]==source_guid) {
+	    // roll_idx the roll, now find the tracker in the db
+	    for (db_idx = 0; db_idx<3; db_idx++)
+	      if (redundancy_db_obj->getTrackerState_ptr(db_idx)->guid\
+		  == source_guid)
+		break;
+	    //redundancy_db_obj->getTrackerState_ptr(roll_idx)->roll	\
+	    //  = roll_array[roll_idx];
+	    // don't trust thier vote entirely - update the roll for the late joining
+	    // tacker, not based on it's vote, but upon what roll we have available
+	    redundancy_db_obj->getTrackerState_ptr(db_idx)->roll	\
+	      =roll_array[redundancy_db_obj->numberOfTrackers()-1];
+	    std::cout << "Updating Steady State Guid: "
+		      << redundancy_db_obj->getTrackerState_ptr(db_idx)->guid
+		      <<" With Roll: "
+		      << roll_string_map[redundancy_db_obj->getTrackerState_ptr(db_idx)->roll]
+		      << std::endl;
+	    redundancy_db_obj->printSortedTrackers();
+	  }
+	// we are not revoting in this case so keep  clear votes clear
+	redundancy_db_obj->clearVotes();
+      } else {
+	std::cerr << "ERROR: Vote from late joining tracker when we have 3 trackers"
+		  << std::endl;
+      }
       break;
  
     case SHUT_DOWN:

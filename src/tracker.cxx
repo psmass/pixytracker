@@ -200,12 +200,11 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 	
       case STEADY_STATE:
-	// print the first time we enter state or if new tracker
-	if (redundancy_db.isNewTracker() or cycle_cnt==0) {
+	// print the first time we enter state
+	if (cycle_cnt==0 || !(cycle_cnt%TEN_SEC)) {
 	  std::cout << "STATE: STEADY_STATE" << std::endl;
 	  std::cout << redundancy_db.getMyGuid() << std::endl;
 	  redundancy_db.printMyState();
-	  redundancy_db.setNewTracker(false);
 	}
      
 	servo_writer.printGimbalPosition();	  
@@ -216,7 +215,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// is independent of the Secondary's samples being used and can be
 	// done is a less urgent manner. 
 	//   
-	if (cycle_cnt++ %ONE_SEC) // assess revote every one sec
+	if (!(cycle_cnt++ %ONE_SEC)) // assess revote every one sec
 	  for (int i=0; i<redundancy_db.numberOfTrackers(); i++){
 	    if ((i !=redundancy_db.getMyOrdinal()-1) && \
 		(redundancy_db.getTrackerState_ptr(i)->hbDeadlineCnt == 0)) {
