@@ -21,6 +21,7 @@
 #include "ddsEntities.hpp"
 #include "topics.hpp"
 #include "application.hpp"
+#include <unistd.h> // getpid()
 
 namespace MODULE
 {
@@ -75,6 +76,11 @@ void run_tracker_application(unsigned int tracked_channel) {
     dds::core::policy::OwnershipStrength ownership_strength;
     int ownership_strength_value {1};
 
+    // Print our PID and GUID (allows ID when using Admin Console)
+    std::cout << "This Trackers PID: " << getpid() << std::endl;
+    std::cout << "This Trackers HB Wrtier GUID: "
+	      << redundancy_db.getMyGuid()
+	      << std::endl;
     
     while (!application::shutdown_requested) {
       //
