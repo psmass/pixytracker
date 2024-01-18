@@ -124,11 +124,9 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// within ~100ms of eachother. Important, since any tracker still in
 	// INITIALIZE or POSTINIT when a vote comes in is considered a late
 	// joiner.
-	//if (!(cycle_cnt++ %5)) {
-	//  cycle_cnt=1;
-	  std::cout << redundancy_db.numberOfTrackers() << ":" << std::flush;
-	  //}
-	  if (redundancy_db.numberOfTrackers()==redundancy_db.votesExpected() \
+	std::cout << redundancy_db.numberOfTrackers() << ":" << std::flush;
+	
+	if (redundancy_db.numberOfTrackers()==redundancy_db.votesExpected() \
 	      || redundancy_db.tenSecCount()) {
 	    redundancy_db.setSM_State(POSTINIT);
 	};
@@ -138,7 +136,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// Pauses beifly to ensure a late joiner has process durable votes first
 	// in the case heartbeats came more quickly and moved us out of INITIALIZE
 	std::cout << "\nSTATE: POSTINIT" << std::endl;
-	std::cout << redundancy_db.getMyGuid() << std::endl;
+	//std::cout << redundancy_db.getMyGuid() << std::endl;
 	
 	rti::util::sleep(dds::core::Duration(1));
 
@@ -148,7 +146,6 @@ void run_tracker_application(unsigned int tracked_channel) {
       case VOTE:
 	// this state tranitions quickly once we vote and ensure one vote
 	std::cout << "\nSTATE: VOTING" << std::endl;
-	std::cout << redundancy_db.getMyGuid() << std::endl;
 	
 	// For first time system up, all the trackers will see the other
 	// two trackers heartbeats or 10sec expires after a new HB.
@@ -167,11 +164,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	if (!(cycle_cnt++ %5)) {
 	  cycle_cnt = 1;
 	  std::cout << "\nSTATE: WAITING FOR ALL VOTES" << std::endl;
-	  std::cout << redundancy_db.getMyGuid() << std::endl;
-	  std::cout << redundancy_db.votesIn()
-		    << " "
-		    << redundancy_db.numberOfTrackers()
-		    << std::endl;
 	};
 	// wait for all votes to be in, if < 3 the timing is dependent
 	// upon delays from different trackers starting.
@@ -181,12 +173,13 @@ void run_tracker_application(unsigned int tracked_channel) {
 
       case VOTE_RESULTS: 
 	std::cout << "\nSTATE: ASSESSING VOTING RESULTS" << std::endl;
-	std::cout << redundancy_db.getMyGuid() << std::endl;
+	// std::cout << redundancy_db.getMyGuid() << std::endl;
+	
 	// Assess if all trackers are consistent - fault any missing
 	// or inconsistent trackers. Set Pixy_Servo_Strength based on
 	// results: PRIMARY 30, SECONDARY 20, TERTIARY 10
 	redundancy_db.assessVoteResults();
-	//redundancy_db.printSortedTrackers();
+	// redundancy_db.printSortedTrackers();
 
 	// change my ownership strength based on my roll.
         ownership_strength_value = redundancy_db.getMyRollStrength();
@@ -203,10 +196,10 @@ void run_tracker_application(unsigned int tracked_channel) {
 	// print the first time we enter state
 	if (cycle_cnt==0 || !(cycle_cnt%TEN_SEC)) {
 	  std::cout << "STATE: STEADY_STATE" << std::endl;
-	  std::cout << redundancy_db.getMyGuid() << std::endl;
+	  // std::cout << redundancy_db.getMyGuid() << std::endl;
 	  redundancy_db.printMyState();
 	}
-     
+
 	servo_writer.printGimbalPosition();	  
 	// Check for lost tracker every one sec: HB deadline missed from a
 	// tracker is 100ms (within 100ms the secondary's samples will be used
@@ -219,9 +212,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	  for (int i=0; i<redundancy_db.numberOfTrackers(); i++){
 	    if ((i !=redundancy_db.getMyOrdinal()-1) && \
 		(redundancy_db.getTrackerState_ptr(i)->hbDeadlineCnt == 0)) {
-	      std::cout << "\nFAULT DEADLINE MISS -  Tracker: "
-			<< redundancy_db.getTrackerState_ptr(i)->guid
-			<< std::endl;
 	      // we need to drop this tracker and promote all lower trackers
 	      redundancy_db.lostTracker(i);
 	      redundancy_db.setSM_State(VOTE);
