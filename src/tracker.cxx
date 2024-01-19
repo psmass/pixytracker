@@ -39,7 +39,7 @@ void run_tracker_application(unsigned int tracked_channel) {
     
     // Instantiate Topic Readers and Writers w/threads. Note, the names eg. servo_writer is
     // just a handle to the server_writer and not the actual DDS writer (use the getMyDataWriter())
-    // fucntion from the ddsEntities.hpp writer class.
+    // function from the ddsEntities.hpp writer class.
     ServoWtr servo_writer(participant); 
     ShapesRdr shapes_reader(participant, &servo_writer);
     HeartbeatWtr tracker_hb_wtr(participant, &redundancy_db, PERIODIC, DEFAULT_PERIOD);
@@ -228,11 +228,6 @@ void run_tracker_application(unsigned int tracked_channel) {
 	    }
 	  } // for
 
-	// Discovered a late joining Tracker, bring in silently at next
-	// available role {Secondary, Tertiary}
-	if (redundancy_db.isNewTracker()) {
-	  ;
-	}
 	// while the background update LEDs and check our ordinal
 	// An invalid ordinal indicates a software bug.
 	if (!redundancy_db.validateMyOrdinal()) {
