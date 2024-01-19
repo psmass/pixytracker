@@ -51,7 +51,7 @@ namespace MODULE
   #define TEN_SEC 10 // main loop clock tick is 1sec. 10 = ten sec
   #define ONE_SEC 1
   enum State {FAILED = 0, OK};
-  enum Roll {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
+  enum Role {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
   enum SM_States {INITIALIZE, POSTINIT, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, \
 		  SHUT_DOWN, ERROR};
   
@@ -60,8 +60,8 @@ namespace MODULE
     int hbDeadlineCnt {0};
     enum State inconsistent_vote {FAILED}; // consistency issue with trackers vote
     enum State operational_hb {FAILED}; // indicates the trackers HB looks good
-    Roll roll {UNASSIGNED};
-    int votes[3] {0, 0, 0}; // votes for tracker roll
+    Role role {UNASSIGNED};
+    int votes[3] {0, 0, 0}; // votes for tracker role
     bool Ivoted {false}; // track if this tracker vote has been processed already
 
   }; 
@@ -95,7 +95,7 @@ namespace MODULE
     void setMyGuid(rti::core::Guid guid) {this->my_guid = guid;}
     rti::core::Guid getNullGuid(void) { return this->ff_guid; }
     
-    int getMyRollStrength(void);
+    int getMyRoleStrength(void);
     void sortSaveGuids(void);
     
     int numberOfTrackers(void) {return this->number_of_trackers;}
@@ -154,41 +154,7 @@ namespace MODULE
 
     void printSortedTrackers(void);
 
-    void printMyState(void) {
-      // This is the equivalent of what the 4 LEDs on a Rpi will provide.
-      // Forth LED (l to r) -  if Green indicates this tracker is Primary
-      //
-      // First (1), Second (2), and Third (3) LEDs indicates this Trackers
-      // Ordinal (Green) and operational status {Failed(Red), Operational(Off)}
-      // of the corresponding redundant tracker.
-      // If one of these Status LEDs is off the corresponding tracker with the
-      // same Ordinal should be Green. Any
-      // of these LEDs that is Red the corresponding tracker will be off and
-      // can be deduced from the other redundant trackers Green Ordinal LED.
-      //
-      std::cout << "|  ORDINAL1  |  ORDINAL2  |  ORDINAL3  | PRIMARY |" << std::endl;
-      std::cout << "+------------+------------+------------+---------+" << std::endl;
-      std::cout << "|";
-      
-      for (int i=0; i<3; i++) {
-	if (this->ordered_array_tracker_state_ptrs[i]->operational_hb == FAILED) {
-	  std::cout << "FAILED (Red)|";
-	}
-	if (this->ordered_array_tracker_state_ptrs[i]->operational_hb == OK) {
-	  if (i+1 == this->my_ordinal) 
-	    std::cout << "  OK (Grn)  |";
-          else 
-            std::cout << "            |";
-        }
-      } // for
-      if (this->array_tracker_states[0].roll == PRIMARY)
-        std::cout << "  GREEN  |" << std::endl;
-      else
-	 std::cout << "         |" << std::endl;
-  
-      std::cout << "+------------+------------+------------+---------+" << std::endl;
-    }
-      
+    void printMyState(void);
       
   private:
     enum SM_States sm_state {INITIALIZE}; // keep this trackers State Machine State
@@ -207,7 +173,7 @@ namespace MODULE
     bool is_new_tracker {true};
 
     // indicates this tracker is a late joiner and should not vote
-    // and should silently join at next available roll
+    // and should silently join at next available role
     bool late_joiner {false};
     int votes_expected {3}; // changes number unique HBs + 1 
     
@@ -218,8 +184,8 @@ namespace MODULE
     // The ordinal, is also used to identify each tracker unit via LEDs
     // (especially when reporting other failed trackers). The ordinal is
     // adjusted as trackers come and go.
-    // The ordinal is independent of roll. Initially they will correlate
-    // since the voting algorithm initially assigns roll to tracker based
+    // The ordinal is independent of role. Initially they will correlate
+    // since the voting algorithm initially assigns role to tracker based
     // on ordinal. But once any tracker fails, a tracker may be promoted
     // and it's ordinal changed. A new tracker coming in to a running
     // system will not take over as primary even if it has the lowest guids

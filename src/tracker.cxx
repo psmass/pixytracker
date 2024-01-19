@@ -71,7 +71,7 @@ void run_tracker_application(unsigned int tracked_channel) {
     int ten_sec_cnt {0};    // initial worst case wait period to vote
     int cycle_cnt {5}; // Used to slow state printouts, Print first state entry
 
-    // used in SM to change ownership strengthor servo_writer  based on my roll vote
+    // used in SM to change ownership strengthor servo_writer  based on my role vote
     dds::pub::qos::DataWriterQos writer_qos = servo_writer.getMyDataWriter().qos();
     dds::core::policy::OwnershipStrength ownership_strength;
     int ownership_strength_value {1};
@@ -105,9 +105,9 @@ void run_tracker_application(unsigned int tracked_channel) {
       // writen, the SM will transition to STEADY_STATE
       //
       // In the STEADY_STATE the SM will maintain the LEDS / print out to
-      // reflect it's roll (PRIMARY, SECONDARY, TERITARY), and Ordinal(1,2,3).
-      // NOTE: Roll and Ordinal are not the same.
-      // It will also reflect the all trackers GUIDs rolls, and ordinals and
+      // reflect it's role (PRIMARY, SECONDARY, TERITARY), and Ordinal(1,2,3).
+      // NOTE: Role and Ordinal are not the same.
+      // It will also reflect the all trackers GUIDs roles, and ordinals and
       // report any failed or missing trackers.
       // From STEADY_STATE a unit can reenter the VOTE state upon change of
       // detected trackers (i.e. loss of heartbeat or new tracker heartbeat),
@@ -187,8 +187,8 @@ void run_tracker_application(unsigned int tracked_channel) {
 	redundancy_db.assessVoteResults();
 	// redundancy_db.printSortedTrackers();
 
-	// change my ownership strength based on my roll.
-        ownership_strength_value = redundancy_db.getMyRollStrength();
+	// change my ownership strength based on my role.
+        ownership_strength_value = redundancy_db.getMyRoleStrength();
 	ownership_strength.value(ownership_strength_value);
 	writer_qos << ownership_strength;
 	servo_writer.getMyDataWriter().qos(writer_qos);
@@ -229,7 +229,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	  } // for
 
 	// Discovered a late joining Tracker, bring in silently at next
-	// available roll {Secondary, Tertiary}
+	// available role {Secondary, Tertiary}
 	if (redundancy_db.isNewTracker()) {
 	  ;
 	}
