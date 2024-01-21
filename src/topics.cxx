@@ -707,8 +707,6 @@ namespace MODULE
 	      if (redundancy_db_obj->getTrackerState_ptr(db_idx)->guid\
 		  == source_guid)
 		break;
-	    //redundancy_db_obj->getTrackerState_ptr(role_idx)->role	\
-	    //  = role_array[role_idx];
 	    // don't trust thier vote entirely - update the role for the late joining
 	    // tacker, not based on it's vote, but upon what role we have available
 	    redundancy_db_obj->getTrackerState_ptr(db_idx)->role	\

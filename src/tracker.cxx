@@ -22,6 +22,7 @@
 #include "topics.hpp"
 #include "application.hpp"
 #include <unistd.h> // getpid()
+#include "led.hpp"
 
 namespace MODULE
 {

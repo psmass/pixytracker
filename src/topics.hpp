@@ -18,7 +18,6 @@
 #include "ddsEntities.hpp"
 #include "gimbal.hpp"
 
-
 namespace MODULE
 {
 
