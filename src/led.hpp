@@ -10,8 +10,8 @@
  * to use the software.
  */
 
-/* led class provides access via system command raspi-gpio commands to drive the LEDs
- * on the custom Tracker LED pi-hat. 
+/* led class provides access via system command raspi-gpio commands to drive
+ * the LEDs on the custom Tracker LED pi-hat. 
  *
  * LEDs function and name: 
  * 
@@ -33,8 +33,6 @@
  *  LED4     14 & 15     14L-15H  14H-15L  14L-15L(14H-15H)  
  */
 
-// #define LED_HPP // comment out for Raspberry to activate LEDs
-
 #ifndef LED_HPP
 #define LED_HPP
 
@@ -44,7 +42,6 @@
 #include <iostream>
 #include <unistd.h> // send linux command
 #include <stdlib.h>
-#include "topics.hpp"
 
 
 namespace MODULE
@@ -82,36 +79,24 @@ namespace MODULE
       this->sendCommand (std::get<1>(this->leds_pin_vec[led]), "dl");
     };
 
-    void setLedRole (enum Role role) {
-      for (int i=1; i<3; i++)
-	setLedOff(i); // turn off all LEDs
-      
-      switch (role) { // turn on the correct role
-      case PRIMARY:
-	this->setLedGreen(1);
-	break;
-      case SECONDARY:
-     	this->setLedGreen(2);
-	break;
-      case TERTIARY:
-        this->setLedGreen(3);
-	break;
-      default:
-	break;
-	}
-     
-    };
-
+    void allLedOff(void) {
+      for (int i=0; i<4; i++)
+	this->setLedOff(i);
+    }
     
   private:
       void sendCommand (int pin, std::string command) {
 	std::stringstream raspi_gpio_cmd;
+	std::string cstr;
 	raspi_gpio_cmd << "raspi-gpio set "
 		       << pin
 		       << " "
 		       << command
 		       << std::flush;
-	//system (raspi_gpio_cmd);
+	cstr=raspi_gpio_cmd.str();
+#ifdef RPI // linux only command don't compile for Darwin
+	system (cstr.c_str());
+#endif
       };
 	
     // led_pin_vec[vector_idx]<pin> e.g. leds_pin_vec[2]<0> returns 23
@@ -119,11 +104,11 @@ namespace MODULE
       std::tuple<int, int> { 21, 20 }, // Green pin Low or Red pin high first
       std::tuple<int, int> {  8, 7 },
       std::tuple<int, int> { 23, 24 },
-      std::tuple<int, int> { 14, 15 }	  
+      std::tuple<int, int> { 15, 14 }	  
     };
   };
 
 
 } // namespace MODULE
-#endif
+#endif // LED_HPP
        

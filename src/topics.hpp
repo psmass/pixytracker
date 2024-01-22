@@ -13,10 +13,13 @@
 #ifndef TOPICS_HPP
 #define TOPICS_HPP
 
+// #define RPI  // comment out for Raspberry to activate LEDs
+
 #include <iostream>
 #include <dds/dds.hpp>
 #include "ddsEntities.hpp"
 #include "gimbal.hpp"
+#include "led.hpp"
 
 namespace MODULE
 {
@@ -154,7 +157,9 @@ namespace MODULE
     void printSortedTrackers(void);
 
     void printMyState(void);
-      
+
+    void updateLedStatus (LedControl* led_control);  // will be null() if no RPI
+    
   private:
     enum SM_States sm_state {INITIALIZE}; // keep this trackers State Machine State
     int ten_sec_count {TEN_SEC}; // ten sec count based on main loop period

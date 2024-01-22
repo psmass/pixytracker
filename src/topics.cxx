@@ -286,8 +286,29 @@ namespace MODULE
     std::cout << "  GREEN  |" << std::endl;  
     std::cout << "+------------+------------+------------+---------+" << std::endl;
   }
-      
-     
+
+  void RedundancyDb::updateLedStatus (LedControl* led_control) {
+    int i;
+    for (int role=0; role<3; role++) { // primary secondary teriary
+      for (i=0; i<3; i++) {
+	if (this->ordered_array_tracker_state_ptrs[i]->role
+	    == role_array[role] ) 
+	  if (this->ordered_array_tracker_state_ptrs[i]->guid
+	      == this->my_guid ) { 
+	    led_control->setLedGreen(role);
+	    break;
+	  } else { 
+	    led_control->setLedOff(role); // if me
+	    break;
+	  }
+      }
+      if (i==3) // no role assigned and not me
+	led_control->setLedRed(role);
+    } // for role
+    led_control->setLedGreen(3); // set My Status Green (I'm running)
+  }
+
+  
   ServoWtr::ServoWtr(
 	const dds::domain::DomainParticipant participant,
         bool periodic,	

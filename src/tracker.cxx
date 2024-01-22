@@ -37,6 +37,10 @@ void run_tracker_application(unsigned int tracked_channel) {
       qos_provider->create_participant_from_config("PixyTrackerParticipant_Library::PixyTrackerParticipant");
 
     RedundancyDb redundancy_db(participant); // db to share beteween Heartbeat and Vote logic
+    // Configure LEDs
+    LedControl led_control; // should clear LEDs
+    // Db is clear so just the status should get lit.
+    redundancy_db.updateLedStatus(&led_control);
     
     // Instantiate Topic Readers and Writers w/threads. Note, the names eg. servo_writer is
     // just a handle to the server_writer and not the actual DDS writer (use the getMyDataWriter())
@@ -82,8 +86,13 @@ void run_tracker_application(unsigned int tracked_channel) {
     std::cout << "This Trackers HB Wrtier GUID: "
 	      << redundancy_db.getMyGuid()
 	      << std::endl;
+
+    bool shutdown {false};
     
-    while (!application::shutdown_requested) {
+    while (!shutdown) {
+
+      if (application::shutdown_requested)
+	redundancy_db.setSM_State(SHUT_DOWN);
       //
       // This block describes a state machine implemented int the main thread
       // (here below) that will have the following states:
@@ -207,6 +216,9 @@ void run_tracker_application(unsigned int tracked_channel) {
 	  redundancy_db.printMyState();
 	}
 
+	// update LEDs all the time if on Rpi
+        redundancy_db.updateLedStatus(&led_control); // Db is clear so role off, status on
+
 	servo_writer.printGimbalPosition();	  
 	// Check for lost tracker every one sec: HB deadline missed from a
 	// tracker is 100ms (within 100ms the secondary's samples will be used
@@ -243,7 +255,8 @@ void run_tracker_application(unsigned int tracked_channel) {
 	
       case SHUT_DOWN:
 	std::cout << "\nSTATE: SHUT DOWN" << std::endl;	
-	application::shutdown_requested = true;
+	led_control.allLedOff();
+	shutdown=true;
 	break;
 	
       case ERROR: // detectable error state
