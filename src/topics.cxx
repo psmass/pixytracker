@@ -270,20 +270,26 @@ namespace MODULE
     std::cout << "|   PRIMARY  | SECONDARY  |  TERTIARY  |  STATUS |" << std::endl;
     std::cout << "+------------+------------+------------+---------+" << std::endl;
     std::cout << "|";
-      
-    for (int role=0; role<4; role++) { // primary secondary teriary unassigned
-      for (int i=0; i<3; i++) {
-	if (this->ordered_array_tracker_state_ptrs[i]->role == role_array[role] ) {
-	  if (this->ordered_array_tracker_state_ptrs[i]->guid == this->my_guid ) 
+
+    int i;
+    for (int role=0; role<3; role++) { // primary secondary teriary 
+      for (i=0; i<3; i++) {
+	if (this->ordered_array_tracker_state_ptrs[i]->role
+	    == role_array[role] ) {
+	  if (this->ordered_array_tracker_state_ptrs[i]->guid
+	      == this->my_guid ) {
 	    std::cout << "  OK (Grn)  |"; // if me
-	  else if (role_array[role] == UNASSIGNED) // then missing/out of service  
-	    std::cout << "FAILED (Red)|" ;
-	  else
+	    break;
+	  } else { // printStatus
 	    std::cout << "            |";
+	    break;
+	  }
 	}
       } // for i
-    } // and the STAUS LED
-    std::cout << "  GREEN  |" << std::endl;  
+      if (i==3) // no role assigned and not me
+	    std::cout << "    RED     |";  
+    } // for role 
+    std::cout << "  GREEN  |" << std::endl;  // set my Status Green
     std::cout << "+------------+------------+------------+---------+" << std::endl;
   }
 
@@ -297,7 +303,7 @@ namespace MODULE
 	      == this->my_guid ) { 
 	    led_control->setLedGreen(role);
 	    break;
-	  } else { 
+	  } else { // led status
 	    led_control->setLedOff(role); // if me
 	    break;
 	  }
