@@ -83,7 +83,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 
     // Print our PID and GUID (allows ID when using Admin Console)
     std::cout << "This Trackers PID: " << getpid() << std::endl;
-    std::cout << "This Trackers HB Wrtier GUID: "
+    std::cout << "This Trackers HB Writer GUID: "
 	      << redundancy_db.getMyGuid()
 	      << std::endl;
 
