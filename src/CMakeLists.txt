@@ -12,10 +12,12 @@ set(CMAKE_MODULE_PATH
     "$ENV{NDDSHOME}/resource/cmake"
 )
 
+# set rti env to env arm and uncomment for cross compile to arm
+# don't forget to uncomment RPI in led.hpp
+# else set rti env to x64linux and comment out #RPI in led.hpp
+# set(CMAKE_CXX_COMPILER /usr/bin/aarch64-linux-gnu-g++)
 set(COMPILE_FLAGS_STD_C11 "-std=c++11")
-set(COMPILE_FLAGS_TARGET_ARM "--target=arm64-linux-gnu -fuse-ld=lld -nostdlib")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILE_FLAGS_STD_C11}")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILE_FLAGS_STD_C11} ${COMPILE_FLAGS_TARGET_ARM}")
 
 set(LINKER_FLAGS "-v")
 Set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${LINKER_FLAGS}")
