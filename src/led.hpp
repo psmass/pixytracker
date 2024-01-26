@@ -43,6 +43,7 @@
 #include <unistd.h> // send linux command
 #include <stdlib.h>
 
+#define RPI  // uncomment for Raspberry to activate LEDs
 
 namespace MODULE
 {

@@ -13,8 +13,6 @@
 #ifndef TOPICS_HPP
 #define TOPICS_HPP
 
-// #define RPI  // uncomment for Raspberry to activate LEDs
-
 #include <iostream>
 #include <dds/dds.hpp>
 #include "ddsEntities.hpp"
