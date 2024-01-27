@@ -30,9 +30,10 @@ find_package(
 )
 
 set(TRACKER_CPP_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/ddsEntities.cxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/redundancyLayer.cxx"
     "${CMAKE_CURRENT_SOURCE_DIR}/gimbal.cxx"
     "${CMAKE_CURRENT_SOURCE_DIR}/topics.cxx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/ddsEntities.cxx"
     "${CMAKE_CURRENT_SOURCE_DIR}/tracker.cxx"
 )
 

@@ -14,15 +14,17 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <unistd.h> // getpid()
 #include <dds/dds.hpp>
 #include <rti/util/util.hpp> // for sleep
-#include "gimbal.hpp"
-#include "tracker.hpp"   // rti generated file from idl to use model const Topics
-#include "ddsEntities.hpp"
-#include "topics.hpp"
-#include "application.hpp"
 #include <unistd.h> // getpid()
+#include "ddsEntities.hpp"
+#include "tracker.hpp"   // rti generated file from idl to use model const Topics
+#include "application.hpp"
+#include "redundancyLayer.hpp"
 #include "led.hpp"
+#include "gimbal.hpp"
+#include "topics.hpp"
 
 namespace MODULE
 {

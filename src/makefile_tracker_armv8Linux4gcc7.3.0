@@ -86,7 +86,7 @@ LIBS +=  -lnddscpp2$(SHAREDLIB_SFX)$(DEBUG_SFX) -lnddsc$(SHAREDLIB_SFX)$(DEBUG_S
       $(SYSLIBS)
 
 #CDRSOURCES    = ShapeType.idl
-SOURCES = $(SOURCE_DIR)ddsEntities.cxx $(SOURCE_DIR)topics.cxx $(SOURCE_DIR)gimbal.cxx
+SOURCES = $(SOURCE_DIR)redundancyLayer.cxx $(SOURCE_DIR)ddsEntities.cxx $(SOURCE_DIR)topics.cxx $(SOURCE_DIR)gimbal.cxx
 COMMONSOURCES = $(notdir $(SOURCES))
 
 EXEC          = tracker
