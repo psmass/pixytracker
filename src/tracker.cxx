@@ -96,7 +96,7 @@ void run_tracker_application(unsigned int tracked_channel) {
       //
       // This block describes a state machine implemented int the main thread
       // (here below) that will have the following states:
-      // INITIALIZE, POSTINIT, VOTE, WAIT_FOR_VOTES, VOTE_RESULTS, STEADY_STATE,
+      // INITIALIZE, PREVOTE, VOTE, WAIT_FOR_VOTES, VOTE_RESULTS, STEADY_STATE,
       // SHUT_DOWN, ERROR.
       //
       // The state machine will INITIALIZE to wait 10 sec for 3 trackers or
@@ -144,14 +144,18 @@ void run_tracker_application(unsigned int tracked_channel) {
 	
 	if (redundancy_db.numberOfTrackers()==redundancy_db.votesExpected() \
 	      || redundancy_db.tenSecCount()) {
-	    redundancy_db.setSM_State(POSTINIT);
+	    redundancy_db.setSM_State(PREVOTE);
 	};
 	break;
 
-      case POSTINIT:
-	// Pauses beifly to ensure a late joiner has process durable votes first
+      case PREVOTE:
+	// Pauses breifly to ensure a late joiner has process durable votes first
 	// in the case heartbeats came more quickly and moved us out of INITIALIZE
-	std::cout << "\nSTATE: POSTINIT" << std::endl;
+	// Also, in the case we came from Steady State, (tracker loss),  ensure
+	// all tracker SMs are out of Steady State, so when we vote they don't
+	// see our vote as a late joiner.
+	// 
+	std::cout << "\nSTATE: PREVOTE" << std::endl;
 	//std::cout << redundancy_db.getMyGuid() << std::endl;
 	
 	rti::util::sleep(dds::core::Duration(1));
@@ -209,6 +213,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 	break;
 	
       case STEADY_STATE:
+	redundancy_db.setiWasOperational(true);
 	// print the first time we enter state
 	if (cycle_cnt==0 || !(cycle_cnt%TEN_SEC)) {
 	  std::cout << "STATE: STEADY_STATE" << std::endl;
@@ -233,7 +238,7 @@ void run_tracker_application(unsigned int tracked_channel) {
 		(redundancy_db.getTrackerState_ptr(i)->hbDeadlineCnt == 0)) {
 	      // we need to drop this tracker and promote all lower trackers
 	      redundancy_db.lostTracker(i);
-	      redundancy_db.setSM_State(VOTE);
+	      redundancy_db.setSM_State(PREVOTE);
 	      break;
 	    } else {
 	      // zero the count

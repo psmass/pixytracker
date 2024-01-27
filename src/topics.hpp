@@ -52,7 +52,7 @@ namespace MODULE
   #define ONE_SEC 1
   enum State {FAILED = 0, OK};
   enum Role {PRIMARY = 0, SECONDARY, TERTIARY, UNASSIGNED};
-  enum SM_States {INITIALIZE, POSTINIT, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, \
+  enum SM_States {INITIALIZE, PREVOTE, VOTE, WAIT_VOTES_IN, VOTE_RESULTS, STEADY_STATE, \
 		  SHUT_DOWN, ERROR};
   
   struct TrackerState {
@@ -110,6 +110,8 @@ namespace MODULE
     void setNewTracker(bool nt_bool) {this->is_new_tracker=nt_bool;}
     bool isLateJoiner(void) {return this->late_joiner;}
     void setLateJoiner(bool lj_bool) {this->late_joiner=lj_bool;}
+    bool iWasOperational(void) {return this->i_was_operational;}
+    void setiWasOperational(bool wo_bool) {this->i_was_operational=wo_bool;}
     
     // Used to track 10 sec from last heartbeat in state INITIALIZE
     bool tenSecCount(void) {
@@ -174,10 +176,17 @@ namespace MODULE
     // new tracker is detected. Set false in loss of a tracker.
     bool is_new_tracker {true};
 
-    // indicates this tracker is a late joiner and should not vote
-    // and should silently join at next available role
+    // Indicates this tracker was previously operational (had been in steady
+    // state vs. just coming on line.
+    // Indicates this tracker is a late joiner (received a durable vote before
+    // voting state) all trackers transition upon initialization to voting
+    // together. 
+    // In this case this tracker should silently join at next available role
     bool late_joiner {false};
-    int votes_expected {3}; // changes number unique HBs + 1 
+    int votes_expected {3}; // changes number unique HBs + 1
+
+    // track if we were previously operational - determines revoting
+    bool i_was_operational {false};
     
     // The ordered_array_tracker_state_ptrs is always kept ordered
     // based on guid of each tracker (smallest to largest).

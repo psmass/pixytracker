@@ -21,7 +21,7 @@ namespace MODULE
   // Array to Index map enum Role
   enum Role role_array[4]{PRIMARY, SECONDARY, TERTIARY, UNASSIGNED};
   std::string role_string_map[4] {"Primary", "Secondary", "Tertiary", "Not Voted Yet"};
-  std::string state_string_map[8]{"INITIALIZE", "POSTINIT", "VOTE", "WAIT_VOTES_IN",\
+  std::string state_string_map[8]{"INITIALIZE", "PREVOTE", "VOTE", "WAIT_VOTES_IN",\
       "VOTE_RESULTS", "STEADY_STATE", "SHUT_DOWN", "ERROR"};
   
   /* Helper functions to covert between InstanceHandles, GUIDs and arrays
@@ -128,7 +128,7 @@ namespace MODULE
     // save lost tracker role
     enum Role lost_tracker_role = \
       this->ordered_array_tracker_state_ptrs[tracker_indx]->role;
-    
+
     // zero out the lost tracker, drop the number of trackers and resort
     this->ordered_array_tracker_state_ptrs[tracker_indx]->guid =\
       this->ff_guid;
@@ -147,7 +147,6 @@ namespace MODULE
 	  this->ordered_array_tracker_state_ptrs[i]->role !=UNASSIGNED) {
 	enum Role t_role = this->ordered_array_tracker_state_ptrs[i]->role;
         this->ordered_array_tracker_state_ptrs[i]->role = role_array[t_role-1]; 
-	  // role_array[(this->ordered_array_tracker_state_ptrs[i]->role)-1];
       }
      }
     // this->printSortedTrackers();
@@ -277,14 +276,13 @@ namespace MODULE
 	if (this->ordered_array_tracker_state_ptrs[i]->role
 	    == role_array[role] ) {
 	  if (this->ordered_array_tracker_state_ptrs[i]->guid
-	      == this->my_guid ) {
+	      == this->my_guid )
 	    std::cout << "  OK (Grn)  |"; // if me
-	    break;
-	  } else { // printStatus
+	  else  // printStatus
 	    std::cout << "            |";
-	    break;
+	  
+	  break;
 	  }
-	}
       } // for i
       if (i==3) // no role assigned and not me
 	    std::cout << "    RED     |";  
@@ -298,15 +296,15 @@ namespace MODULE
     for (int role=0; role<3; role++) { // primary secondary teriary
       for (i=0; i<3; i++) {
 	if (this->ordered_array_tracker_state_ptrs[i]->role
-	    == role_array[role] ) 
+	    == role_array[role] ) {
 	  if (this->ordered_array_tracker_state_ptrs[i]->guid
-	      == this->my_guid ) { 
+	      == this->my_guid )
 	    led_control->setLedGreen(role);
-	    break;
-	  } else { // led status
-	    led_control->setLedOff(role); // if me
-	    break;
-	  }
+	  else // else not me so turn led off
+	    led_control->setLedOff(role);
+
+	  break; // processed role
+	}
       }
       if (i==3) // no role assigned and not me
 	led_control->setLedRed(role);
@@ -493,14 +491,15 @@ namespace MODULE
     this->getMyDataSample()->value("NumberOfTrackers", \
 				    redundancy_db_obj->numberOfTrackers());
 
-			       
-    // set the votes according to if the system was operational or not.
-    //
-    if (!redundancy_db_obj->isLateJoiner()) //was not operational,
+    // set the votes according to if the system this tracker was operational 
+    // and not a Late Joiner
+    if (!redundancy_db_obj->iWasOperational() \
+	&& !redundancy_db_obj->isLateJoiner()) 
       // no roles assigned. Assign them in order of sorted guids
       // lowest {Primary} to higher
       for (int i=0; i<redundancy_db_obj->numberOfTrackers(); i++) 
 	redundancy_db_obj->getTrackerState_ptr(i)->role=role_array[i];
+
     else  // is a late joiner - check for and fix an outlier case where
       // Trackers come up one at a time. The first tracker will only
       // vote for itself (no other trackers and does not vote again)
@@ -671,7 +670,7 @@ namespace MODULE
     switch (redundancy_db_obj->smState()) {
 
     case INITIALIZE:
-    case POSTINIT:
+    case PREVOTE:
       // for each tracker populate thier role and  assign unanomous votes
       // to 
       
