@@ -154,12 +154,12 @@
         <subscriber name="subscriber">
           <data_reader name="shape_topic_reader" topic_ref="Circle">
             <content_filter name="cft" kind="builtin.sql">
-              <expression>color = &apos;YELLOW&apos; AND shapesize &gt;40</expression>
+              <expression>color = &apos;YELLOW&apos; AND shapesize &gt;70</expression>
             </content_filter>
             <datareader_qos>
               <time_based_filter>
                 <minimum_separation>
-                  <nanosec>10000000</nanosec>
+                  <nanosec>5000000</nanosec>
                 </minimum_separation>
               </time_based_filter>
             </datareader_qos>
