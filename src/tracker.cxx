@@ -303,7 +303,7 @@ int main(int argc, char *argv[]) {
    };
 
     using namespace application;
-    unsigned int trackedChannel = INDEX_YELLOW;
+    unsigned int trackedChannel = INDEX_RED;
 
     setup_signal_handlers();
 
