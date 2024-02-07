@@ -236,7 +236,7 @@ namespace MODULE
     
     ~HeartbeatRdr(void){};
 
-    void handler(dds::core::xtypes::DynamicData& data);
+    void handler(rti::sub::LoanedSample<rti::core::xtypes::DynamicDataImpl>* sample);
 
     private:
     RedundancyDb* redundancy_db_obj;
@@ -275,7 +275,7 @@ namespace MODULE
     
     ~VoteRdr(void) {};
 
-    void handler(dds::core::xtypes::DynamicData& data);
+    void handler(rti::sub::LoanedSample<rti::core::xtypes::DynamicDataImpl>* sample);
 
   private:
     rti::core::Guid extractGuid(dds::core::xtypes::DynamicData& sample, std::string topicField);        RedundancyDb* redundancy_db_obj;

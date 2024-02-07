@@ -92,7 +92,7 @@ namespace MODULE
             void readerThread(void);
             void runThread(void);
 
-            virtual void handler(dds::core::xtypes::DynamicData& data)
+      virtual void handler(rti::sub::LoanedSample<rti::core::xtypes::DynamicDataImpl> * sample)
                 // Default Reader Handler - Needs to be overriden to parse out specific topic
                 { std::cout << "DRH";};
 
@@ -100,6 +100,7 @@ namespace MODULE
 
         protected:
             dds::domain::DomainParticipant participant = {nullptr};
+      dds::sub::DataReader<dds::core::xtypes::DynamicData> topicReader = {nullptr};
             std::string topicType;
             std::string readerName;
             std::thread myRdrThread;

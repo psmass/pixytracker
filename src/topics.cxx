@@ -48,12 +48,12 @@ namespace MODULE
     this->servo_writer = servoWriter;
   };
 
-  void ShapesRdr::handler(dds::core::xtypes::DynamicData& data)
+  void ShapesRdr::handler(rti::sub::LoanedSample<rti::core::xtypes::DynamicDataImpl>* sample)
   {
     DDS_ReturnCode_t retcode;
     // Control the pan & til
-    x = data.value<int32_t>("x");
-    y = data.value<int32_t>("y");
+    x = sample->data().value<int32_t>("x");
+    y = sample->data().value<int32_t>("y");
     this->servo_writer->writeData(x,y);
 
   };

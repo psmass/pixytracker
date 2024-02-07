@@ -112,7 +112,12 @@ namespace MODULE
         this->participant = participant;
         topicType = topic_type;
         readerName = reader_name;
- 
+        // Find the DataReader defined in the xml by using the participant and the
+        // subscriber::reader pair as the datareader name.
+        this->topicReader = rti::sub::find_datareader_by_name<
+                dds::sub::DataReader<dds::core::xtypes::DynamicData>>(
+                this->participant,
+                this->readerName);
     }
 
 
@@ -120,24 +125,17 @@ namespace MODULE
 
         std::cout <<  "Reader Thread " << this->readerName << " running " << std::endl;
 
-        // Find the DataReader defined in the xml by using the participant and the
-        // subscriber::reader pair as the datareader name.
-        dds::sub::DataReader<dds::core::xtypes::DynamicData> reader =
-            rti::sub::find_datareader_by_name<
-                dds::sub::DataReader<dds::core::xtypes::DynamicData>>(
-                this->participant,
-                this->readerName);
 
         // WaitSet will be woken when the attached condition is triggered
         dds::core::cond::WaitSet waitset;
         
         // Create a ReadCondition for any data on this reader, and add to WaitSet
         dds::sub::cond::ReadCondition read_condition (
-            reader,
+            this->topicReader,
             dds::sub::status::DataState::any()
          );
 
-        dds::core::cond::StatusCondition status_condition (reader);
+        dds::core::cond::StatusCondition status_condition (this->topicReader);
 
         status_condition.enabled_statuses (
             dds::core::status::StatusMask::subscription_matched());
@@ -156,27 +154,32 @@ namespace MODULE
                 //    std::cout << "guard_cond was triggered\n";
                 if (active_conditions[i] == status_condition) {
                     // only one status condition set so we don't really need to d'mux
-                    dds::core::status::StatusMask triggered_mask = reader.status_changes();
+                    dds::core::status::StatusMask triggered_mask
+		      = this->topicReader.status_changes();
 
                     if ((triggered_mask & dds::core::status::StatusMask::subscription_matched()).any()){
                         dds::core::status::SubscriptionMatchedStatus st =
-                            reader.subscription_matched_status();
+                            this->topicReader.subscription_matched_status();
                         std::cout << "Reader Pubs: " << st.current_count()
                         << " " << st.current_count_change() << std::endl;
                     }
 
                 } else if (active_conditions[i] == read_condition) {
                     // Take all samples            
-                    dds::sub::LoanedSamples<dds::core::xtypes::DynamicData> samples = reader.take();
-                    for (const auto sample : samples) {
+                    dds::sub::LoanedSamples<dds::core::xtypes::DynamicData> samples
+		      = this->topicReader.take();
+		    rti::sub::LoanedSample<rti::core::xtypes::DynamicDataImpl> * sample;
+		    
+                    for (auto s : samples) {
+		      sample = &s;
 
-                        if (sample.info().valid()) {
+                        if (sample->info().valid()) {
 			  //std::cout << "Read sample for topic: " << this->topicType << std::endl;
 			  //std::cout << sample.data() << std::endl;
 			  //std::cout << sample.info()->source_guid() << std::endl;
                             // map the sample to the specific dynamic data type
-                            dds::core::xtypes::DynamicData& data = const_cast<dds::core::xtypes::DynamicData&>(sample.data());
-                            this->handler(data); // call the topic specific Handler (Virtual) 
+                            //dds::core::xtypes::DynamicData& data = const_cast<dds::core::xtypes::DynamicData&>(sample.data());
+                            this->handler(sample); // call the topic specific Handler (Virtual) 
 
                         }
                         else {

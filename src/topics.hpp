@@ -84,7 +84,7 @@ namespace MODULE
 	      ServoWtr* servoWriter);
     ~ShapesRdr(void){};
 
-    void handler(dds::core::xtypes::DynamicData& data);
+    void handler(rti::sub::LoanedSample<rti::core::xtypes::DynamicDataImpl>* sample);
         
   private:
     DDS_Long x;

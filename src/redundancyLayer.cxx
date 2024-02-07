@@ -365,9 +365,11 @@ namespace MODULE
     this->redundancy_db_obj = redundancy_db_obj;
   };
 
-  void HeartbeatRdr::handler(dds::core::xtypes::DynamicData& data)
+  void HeartbeatRdr::handler(rti::sub::LoanedSample<rti::core::xtypes::DynamicDataImpl>* sample)
   {
-    std::vector<uint8_t> seq_values = data.get_values<uint8_t>("MyHBwriterHandle");
+    dds::core::xtypes::DynamicData& data = const_cast<dds::core::xtypes::DynamicData&>(sample->data());
+    this->topicReader->acknowledge_sample(sample->info());
+    std::vector<uint8_t> seq_values = sample->data().get_values<uint8_t>("MyHBwriterHandle");
     
     uint8_t iarr[16];
     for (int i=15; i>=0; i--) {
@@ -542,7 +544,7 @@ namespace MODULE
   }
 
 
-  void VoteRdr::handler(dds::core::xtypes::DynamicData& data)
+  void VoteRdr::handler(rti::sub::LoanedSample<rti::core::xtypes::DynamicDataImpl>* sample)
   {
     // Votes can be received under three conditions (states):
     //
@@ -563,7 +565,7 @@ namespace MODULE
     //   that none of the trackers coming up together see the others or
     //   themselves as a late joiner.
     //    
-
+    dds::core::xtypes::DynamicData& data = const_cast<dds::core::xtypes::DynamicData&>(sample->data());
     bool tracker_voted {true}; // set true so vote ignored by default
     bool known_tracker {false};
     
