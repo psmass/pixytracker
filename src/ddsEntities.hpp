@@ -93,6 +93,8 @@ namespace MODULE
             void runThread(void);
 
       virtual void handler(rti::sub::LoanedSample<rti::core::xtypes::DynamicDataImpl> * sample)
+      // Note: we hand over the entire Sample vs. just the Data to allow the application to
+      // play with things like APPLICATION_LEVEL_ACKNOWLEDGMENT etc.
                 // Default Reader Handler - Needs to be overriden to parse out specific topic
                 { std::cout << "DRH";};
 
