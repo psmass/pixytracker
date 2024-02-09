@@ -145,13 +145,7 @@
             <datawriter_qos base_name="PixyTrackerQOS_Library::Exclusive">
             </datawriter_qos>
           </data_writer>
-          <data_writer name="tracker_hb_topic_writer" topic_ref="tracker_heartbeat">
-            <datawriter_qos>
-              <reliability>
-                <acknowledgment_kind>APPLICATION_EXPLICIT_ACKNOWLEDGMENT_MODE</acknowledgment_kind>
-              </reliability>
-            </datawriter_qos>
-          </data_writer>
+          <data_writer name="tracker_hb_topic_writer" topic_ref="tracker_heartbeat"/>
           <data_writer name="vote_topic_writer" topic_ref="vote">
             <datawriter_qos base_name="PixyTrackerQOS_Library::Durable">
             </datawriter_qos>
@@ -170,14 +164,7 @@
               </time_based_filter>
             </datareader_qos>
           </data_reader>
-          <data_reader name="tracker_hb_topic_reader" topic_ref="tracker_heartbeat">
-            <datareader_qos>
-              <reliability>
-                <kind>RELIABLE_RELIABILITY_QOS</kind>
-                <acknowledgment_kind>APPLICATION_EXPLICIT_ACKNOWLEDGMENT_MODE</acknowledgment_kind>
-              </reliability>
-            </datareader_qos>
-          </data_reader>
+          <data_reader name="tracker_hb_topic_reader" topic_ref="tracker_heartbeat"/>
           <data_reader name="vote_topic_reader" topic_ref="vote">
             <datareader_qos base_name="PixyTrackerQOS_Library::Durable">
             </datareader_qos>

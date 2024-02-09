@@ -99,10 +99,12 @@ namespace MODULE
                 { std::cout << "DRH";};
 
             std::thread * getThreadHndl(void) { return &myRdrThread; };
+            dds::sub::DataReader<dds::core::xtypes::DynamicData> getMyDataReader(void) {
+	        return this->topicReader;};
 
         protected:
             dds::domain::DomainParticipant participant = {nullptr};
-      dds::sub::DataReader<dds::core::xtypes::DynamicData> topicReader = {nullptr};
+            dds::sub::DataReader<dds::core::xtypes::DynamicData> topicReader = {nullptr};
             std::string topicType;
             std::string readerName;
             std::thread myRdrThread;

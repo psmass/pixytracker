@@ -329,11 +329,14 @@ namespace MODULE
        We'll need to convert instance handles to GUIDS to use the math operators. 
        Note sure how to get Guid directly and can't do math on Instance handle.
      */
-    const dds::core::InstanceHandle handle=this->getMyDataWriter()->instance_handle();
-
+    const dds::core::InstanceHandle instance_hdl=this->getMyDataWriter()->instance_handle();
+    // Remove any instance that gracefully shutdown so Reliable Writer does not block
+    dds::pub::qos::DataWriterQos writer_qos;
+    writer_qos<<dds::core::policy::WriterDataLifecycle::AutoDisposeUnregisteredInstances();
+    
     // initially all trackers place their own guid in the [0] index prior to
     // bubble sorting the ordered_array_tracker_state_ptrs[3]
-    rti::core::Guid guid = convertToGuid(handle);
+    rti::core::Guid guid = convertToGuid(instance_hdl);
     this->redundancy_db_obj->getMyTrackerStatePtr()->guid = guid;
     this->redundancy_db_obj->setMyGuid(guid);
     
@@ -348,13 +351,19 @@ namespace MODULE
       seq_values.push_back(iarr[i]);
     
     this->getMyDataSample()->set_values("MyHBwriterHandle", seq_values);
-  }
-  
+  }  
     
   // write() is effectively a runtime down cast for periodic data
   void HeartbeatWtr::write(void)
   {
-    this->topicWriter.write(*this->getMyDataSample());
+    try {
+      this->topicWriter.write(*this->getMyDataSample());
+    }
+    catch( const std::exception& e) {
+      // One of our heartbeat readers went away ungracefully, we need to
+      // dispose of it so we do not block.
+      std::cerr << "Heartbeat Writer Error: " << e .what() << std::endl;
+    }
   };
   
 
